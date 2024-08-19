@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "constants.h"
 #include "lru_cache.h"
+#include "queue.h"
 
 #define TASK_QUEUE_SIZE         1000
 #define MAX_LOG_LENGTH          1000
@@ -15,8 +16,8 @@
 
 typedef struct server {
     lru_cache *cache;
-
-    /* TODO: add needed fields */
+    queue_t *queue;
+    hashtable_t *data_base;
 } server;
 
 typedef struct request {
@@ -26,9 +27,9 @@ typedef struct request {
 } request;
 
 typedef struct response {
-    char *server_log;
-    char *server_response;
-    int server_id;
+    char *server_log; // MAX_LOG_LENGTH string
+    char *server_response; // MAX_RESPONSE_LENGTH string
+    int server_id; // of the server that executed the request
 } response;
 
 

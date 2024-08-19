@@ -12,6 +12,7 @@
 #include "utils.h"
 #include "constants.h"
 #include "hash.h"
+#include "queue.h"
 
 void read_quoted_string(char *buffer, int buffer_len, int *start, int *end) {
     *end = -1;

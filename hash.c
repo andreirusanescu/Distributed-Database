@@ -19,7 +19,7 @@ ll_create(unsigned int data_size)
 // adauga un nou nod cu nod->data = new_data pe pozitia n;
 void ll_add_nth_node(linked_list_t* list, unsigned int n, const void* new_data)
 {
-	if (n < 0 || !list)
+	if (!list)
 		return;
 	ll_node_t *new_node = (ll_node_t *)malloc(sizeof(ll_node_t));
 	DIE(!new_node, "malloc() failed");
@@ -36,7 +36,7 @@ void ll_add_nth_node(linked_list_t* list, unsigned int n, const void* new_data)
 		ll_node_t *p = list->head;
 		if (n > list->size)
 			n = list->size;
-		for (int i = 0; i < n && p->next != NULL; ++i)
+		for (unsigned int i = 0; i < n && p->next != NULL; ++i)
 			p = p->next;
 		new_node->next = p->next; // iau valoarea lui v[n];
 		p->next = new_node; // v[n] = ala adaugat, v[n + 1] e v[n] ul de dinainte;
@@ -60,7 +60,7 @@ ll_node_t* ll_remove_nth_node(linked_list_t* list, unsigned int n)
 		ll_node_t *p = list->head;
 		if (n > list->size)
 			n = list->size - 1;
-		for (int i = 0; i < n - 1 && p->next != NULL; ++i)
+		for (unsigned int i = 0; i < n - 1 && p->next != NULL; ++i)
 			p = p->next;
 		ll_node_t *q = p->next;
 		if (q != NULL) {
@@ -145,7 +145,7 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 	ht->hmax = hmax;
 	ht->buckets = (linked_list_t **)malloc(hmax * sizeof(linked_list_t*));
 	DIE(!ht->buckets, "malloc() failed");
-	for (int i = 0; i < ht->hmax; ++i) {
+	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ht->buckets[i] = malloc(sizeof(linked_list_t));
 		if (!ht->buckets[i]) {
 			fprintf(stderr, "malloc() faled\n");
@@ -258,7 +258,7 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 // elibereaza tot;
 void ht_free(hashtable_t *ht)
 {
-	for (int i = 0; i < ht->hmax; ++i) {
+	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ll_node_t* node = ht->buckets[i]->head;
 		for (int j = 0; node; j++) {
 			if ((info*)node->data) {

@@ -1,0 +1,7 @@
+6
+ADD_SERVER 1 5
+EDIT "manager.txt" "Box understand feel."
+GET "manager.txt"
+EDIT "manager.txt" "Mouth attorney."
+GET "manager.txt"
+GET "produce.txt"
