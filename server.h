@@ -18,6 +18,7 @@ typedef struct server {
     lru_cache *cache;
     queue_t *queue;
     hashtable_t *data_base;
+    int id;
 } server;
 
 typedef struct request {

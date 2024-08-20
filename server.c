@@ -10,70 +10,88 @@
 
 static response
 *server_edit_document(server *s, char *doc_name, char *doc_content) {
-    void **evicted_key = NULL;
+	void **evicted_key = NULL;
 	response *res = (response *)malloc(sizeof(response));
-    res->server_id = 1;
+	res->server_id = s->id;
+	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
+	int log_length, res_length;
+
 
 	if (lru_cache_get(s->cache, doc_name)) {
-		res->server_log = MSG_B;
-		res->server_response = LOG_HIT;
+		sprintf(sv_log, LOG_HIT, doc_name);
+		sprintf(sv_res, MSG_B, doc_name);
 		lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
 		ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
-		return res;
+		// return res;
+		goto res_fin;
 	}
 
 	if (ht_has_key(s->data_base, doc_name)) {
-		res->server_log = MSG_B;
+		sprintf(sv_res, MSG_B, doc_name);
 	} else {
-		res->server_log = MSG_C;
+		sprintf(sv_res, MSG_C, doc_name);
 	}
 
 	lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
 	ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
 
-    if (evicted_key) {
-		// adding evited key to memory
-        ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
-               ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
-		res->server_response = LOG_EVICT;
-    } else {
-		res->server_response = LOG_MISS;
+	if (evicted_key) {
+		// adding evicted key to memory
+		ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
+			   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
+		sprintf(sv_log, LOG_EVICT, doc_name, (char *)(((info *)(*evicted_key))->key));
+	} else {
+		sprintf(sv_log, LOG_MISS, doc_name);
 	}
 
-    return res;
+res_fin:
+	log_length = strlen(sv_log), res_length = strlen(sv_res);
+	res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
+	res->server_response = (char *)malloc((res_length + 1) * sizeof(char));
+	memcpy(res->server_log, sv_log, log_length + 1);
+	memcpy(res->server_response, sv_res, res_length + 1);
+
+	return res;
 }
 
 static response
 *server_get_document(server *s, char *doc_name) {
 	void **evicted_key = NULL;
-    response *res = (response *)malloc(sizeof(response));
-    res->server_id = 1;
+	response *res = (response *)malloc(sizeof(response));
+	res->server_id = s->id;
 
-    char *cached_content = lru_cache_get(s->cache, doc_name);
-    if (cached_content) {
-        res->server_log = LOG_HIT;
-        res->server_response = cached_content;
-        return res;
-    }
+	char sv_log[MAX_LOG_LENGTH];
+	int log_length;
 
-    char *db_content = ht_get(s->data_base, doc_name);
-    if (db_content) {
-        res->server_log = LOG_MISS;
-        res->server_response = db_content;
-        lru_cache_put(s->cache, doc_name, db_content, evicted_key);
+	char *cached_content = lru_cache_get(s->cache, doc_name);
+	if (cached_content) {
+		sprintf(sv_log, LOG_HIT, doc_name);
+		res->server_response = cached_content;
+		goto res_fin2;
+	}
 
-        if (evicted_key) {
-            ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
-                   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
-            res->server_log = LOG_EVICT;
-        }
+	char *db_content = ht_get(s->data_base, doc_name);
+	if (db_content) {
+		sprintf(sv_log, LOG_MISS, doc_name);
+		res->server_response = db_content;
+		lru_cache_put(s->cache, doc_name, db_content, evicted_key);
 
-        return res;
-    }
+		if (evicted_key) {
+			ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
+				   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
+			sprintf(sv_log, LOG_EVICT, doc_name, ((char *)((info *)(*evicted_key))->key));
+		}
+	} else {
+		sprintf(sv_log, LOG_FAULT, doc_name);
+		res->server_response = NULL;
+	}
 
-    res->server_log = LOG_FAULT;
-    res->server_response = NULL;
-    return res;
+res_fin2:
+	log_length = strlen(sv_log);
+	res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
+	memcpy(res->server_log, sv_log, log_length + 1);
+
+	return res;
 }
 
 server *init_server(unsigned int cache_size) {
@@ -85,27 +103,39 @@ server *init_server(unsigned int cache_size) {
 }
 
 response *server_handle_request(server *s, request *req) {
-    response *res;
+	response *res;
 
-    if (req->type == EDIT_DOCUMENT) {
-        res = server_edit_document(s, req->doc_name, req->doc_content);
-        q_enqueue(s->queue, req);
-        return res;
-    } else if (req->type == GET_DOCUMENT) {
+	if (req->type == EDIT_DOCUMENT) {
+		q_enqueue(s->queue, req);
+		res = (response *)malloc(sizeof(response));
+		res->server_id = s->id;
+		char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
+
+
+		sprintf(sv_log, LOG_LAZY_EXEC, s->queue->size);
+		sprintf(sv_res, MSG_A, get_request_type_str(req->type), req->doc_name);
+
+		int log_length = strlen(sv_log), res_length = strlen(sv_res);
+
+		res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
+		res->server_response = (char *)malloc((res_length + 1) * sizeof(char));
+
+		memcpy(res->server_log, sv_log, log_length + 1);
+		memcpy(res->server_response, sv_res, res_length + 1);
+		return res;
+	} else if (req->type == GET_DOCUMENT) {
 		request *aux;
-        while (!q_is_empty(s->queue)) {
-            aux = (request *)q_front(s->queue);
-            if (aux->type == EDIT_DOCUMENT) {
-                PRINT_RESPONSE(server_edit_document(s, aux->doc_name, aux->doc_content));
-            }
-            q_dequeue(s->queue);
-        }
-        res = server_get_document(s, req->doc_name);
-		PRINT_RESPONSE(res);
-        return res;
-    }
+		while (s->queue->size) {
+			aux = (request *)q_front(s->queue);
+			res = server_edit_document(s, aux->doc_name, aux->doc_content);
+			PRINT_RESPONSE(res);
+			q_dequeue(s->queue);
+		}
+		res = server_get_document(s, req->doc_name);
+		return res;
+	}
 
-    return NULL;
+	return NULL;
 }
 
 void free_server(server **s) {

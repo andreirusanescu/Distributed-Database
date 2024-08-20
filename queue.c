@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "utils.h"
 #include "queue.h"
+#include "server.h"
 
 queue_t *q_create(unsigned int data_size, unsigned int max_size) {
 	queue_t *queue = malloc(sizeof(queue_t));
@@ -36,6 +37,12 @@ void *q_front(queue_t *q) {
 	return q->buff[q->read_idx];
 }
 
+void free_mem(void **data) {
+	free((((request *)(*data)))->doc_content);
+	free((((request *)(*data)))->doc_name);
+	free(*data);
+}
+
 /*
  * Functia scoate un element din coada. Se va intoarce 1 daca operatia s-a
  * efectuat cu succes (exista cel putin un element pentru a fi eliminat) si
@@ -45,10 +52,25 @@ int q_dequeue(queue_t *q) {
 	if (!q || q->size == 0)
 		return 0;
 	void *aux = q->buff[0];
-	free(aux);
+	free_mem(&aux);
+	// free(aux);
 	q->read_idx = (q->read_idx + 1) % q->max_size;
 	q->size--;
 	return 1;
+}
+
+/* 
+ * Functia face deep copy pe o structura de tip request
+ */
+void deep_copy(void **elem, void *data) {
+	request *src = (request *)data;
+
+	int content_len = strlen(src->doc_content);
+	int name_len = strlen(src->doc_name);
+	((request *)(*elem))->doc_content = (char *)malloc((content_len + 1) * sizeof(char));
+	((request *)(*elem))->doc_name = (char *)malloc((name_len + 1) * sizeof(char));
+	memcpy(((request *)(*elem))->doc_content, src->doc_content, content_len + 1);
+	memcpy(((request *)(*elem))->doc_name, src->doc_name, name_len + 1);
 }
 
 /* 
@@ -60,7 +82,11 @@ int q_enqueue(queue_t *q, void *new_data) {
 	if (q->size == q->max_size)
 		return 0;
 	q->buff[q->write_idx] = malloc(q->data_size);
-	memcpy(q->buff[q->write_idx], new_data, q->data_size);
+	// memcpy(q->buff[q->write_idx], new_data, q->data_size);
+	deep_copy(&q->buff[q->write_idx], new_data);
+	// free(((request *)new_data)->doc_content);
+	// free(((request *)new_data)->doc_name);
+	// free(((request *)new_data));
 	q->write_idx = (q->write_idx + 1) % q->max_size;
 	q->size++;
 	return 1;
