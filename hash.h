@@ -38,6 +38,7 @@ struct hashtable_t {
 	int (*compare_function)(void*, void*);
 	// (Pointer la) Functie pentru a elibera memoria ocupata de cheie si valoare.
 	void (*key_val_free_function)(void*);
+	void (*copy_func)(void **, void *, unsigned int);
 };
 
 linked_list_t* ll_create(unsigned int data_size);
@@ -67,7 +68,8 @@ void key_val_free_function(void *data);
 // creeaza un hashtable;
 hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 		int (*compare_function)(void*, void*),
-		void (*key_val_free_function)(void*));
+		void (*key_val_free_function)(void*),
+		void (*copy_func)(void **, void*, unsigned int));
 
 // verifica tot tabelul dupa cheie;
 int ht_has_key(hashtable_t *ht, void *key);
@@ -86,6 +88,9 @@ void ht_remove_entry(hashtable_t *ht, void *key);
 void ht_free(hashtable_t *ht);
 unsigned int ht_get_size(hashtable_t *ht);
 unsigned int ht_get_hmax(hashtable_t *ht);
+
+void node_copy(void **dst, void *src, unsigned int src_size);
+void simple_copy(void **dst, void *src, unsigned int src_size);
 
 /************************************************************************************************************/
 

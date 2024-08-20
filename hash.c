@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash.h"
+#include "lru_cache.h"
 #include "utils.h"
 
 linked_list_t*
@@ -138,12 +139,13 @@ void key_val_free_function(void *data) {
 // creeaza un hashtable;
 hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 		int (*compare_function)(void*, void*),
-		void (*key_val_free_function)(void*))
+		void (*key_val_free_function)(void*),
+		void (*copy_func)(void **, void*, unsigned int))
 {
-	hashtable_t *ht = (hashtable_t*)malloc(sizeof(hashtable_t));
+	hashtable_t *ht = (hashtable_t *)malloc(sizeof(hashtable_t));
 	DIE(!ht, "malloc() failed");
 	ht->hmax = hmax;
-	ht->buckets = (linked_list_t **)malloc(hmax * sizeof(linked_list_t*));
+	ht->buckets = (linked_list_t **)malloc(hmax * sizeof(linked_list_t *));
 	DIE(!ht->buckets, "malloc() failed");
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ht->buckets[i] = malloc(sizeof(linked_list_t));
@@ -162,6 +164,7 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 	ht->hash_function = hash_function;
 	ht->compare_function = compare_function;
 	ht->key_val_free_function = key_val_free_function;
+	ht->copy_func = copy_func;
 	return ht;
 }
 
@@ -171,7 +174,7 @@ int ht_has_key(hashtable_t *ht, void *key)
 	unsigned int index = ht->hash_function(key) % ht->hmax;
 	ll_node_t *node = ht->buckets[index]->head;
 	while (node) {
-		if (ht->compare_function(((info*)(node->data))->key, key) == 0)
+		if (ht->compare_function(((info *)(node->data))->key, key) == 0)
 			return 1;
 		node = node->next;
 	}
@@ -188,45 +191,56 @@ void *ht_get(hashtable_t *ht, void *key)
 	ll_node_t *node = ht->buckets[index]->head;
 	while (node != NULL) {
 		info *pair = (info *)node->data;
-		if (ht->compare_function(pair->key, key) == 0)
+		if (ht->compare_function(pair->key, key) == 0) {
 			return pair->value;
+		}
 		node = node->next;
 	}
 	return NULL;
+}
+
+void node_copy(void **dst, void *src, unsigned int src_size) {
+	node *dest = (node *)(*dst);
+	node *source = (node *)(src);
+	
+	dest->data = malloc(sizeof(info));
+	int key_len = strlen(((info *)(source->data))->key) + 1;
+	int val_len = strlen(((info *)(source->data))->value) + 1;
+
+	((info *)dest->data)->key = malloc(key_len);
+	((info *)dest->data)->value = malloc(val_len);
+
+	memcpy(((info *)(dest->data))->key, ((info *)(source->data))->key, key_len);
+	memcpy(((info *)(dest->data))->value, ((info *)(source->data))->value, val_len);
+	(void)src_size;
+}
+
+void simple_copy(void **dst, void *src, unsigned int src_size) {
+	memcpy((*dst), src, src_size);
 }
 
 // incarca / updateaza un camp din hashtable;
 void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	void *value, unsigned int value_size)
 {
-	info *data = (info*)malloc(sizeof(info));
+	info *data = (info *)malloc(sizeof(info));
 	DIE(!data, "malloc() failed");
 	data->key = malloc(key_size);
-	if (!data->key) {
-		fprintf(stderr, "malloc() failed\n");
-		free(data);
-		return;
-	}
 	data->value = malloc(value_size);
-	if (!data->value) {
-		fprintf(stderr, "malloc() failed\n");
-		free(data->key);
-		free(data);
-		return;
-	}
 	memcpy(data->key, key, key_size);
-	memcpy(data->value, value, value_size);
+	ht->copy_func(&data->value, value, value_size);
+
 	unsigned int index = ht->hash_function(key) % HMAX;
 	ll_node_t *node = ht->buckets[index]->head;
 	while (node != NULL) {
 		if (!ht->compare_function(((info*)(node->data))->key, data->key)) {
 			// am gasit cheia
-			ht->key_val_free_function(((info*)(node->data))->value);
-			free(((info*)(node->data))->key); // eliberez valorile vechi;
-			free(((info*)(node->data))->value);
+			// ht->key_val_free_function(((info*)(node->data))->value);
+			// free(((info*)(node->data))->key); // eliberez valorile vechi;
+			// free(((info*)(node->data))->value);
 			((info*)node->data)->key = data->key;
 			((info*)node->data)->value = data->value;
-			free(data); // eliberez dublura;
+			// free(data); // eliberez dublura;
 			return;
 		}
 		node = node->next;

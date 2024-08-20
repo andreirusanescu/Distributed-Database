@@ -16,13 +16,12 @@ static response
 	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 	int log_length, res_length;
 
-
 	if (lru_cache_get(s->cache, doc_name)) {
 		sprintf(sv_log, LOG_HIT, doc_name);
 		sprintf(sv_res, MSG_B, doc_name);
 		lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
-		ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
-		// return res;
+		printf("MUIE2\n");
+		ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
 		goto res_fin;
 	}
 
@@ -33,12 +32,12 @@ static response
 	}
 
 	lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
-	ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
+	ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
 
 	if (evicted_key) {
 		// adding evicted key to memory
-		ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
-			   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
+		ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key) + 1,
+			   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value) + 1);
 		sprintf(sv_log, LOG_EVICT, doc_name, (char *)(((info *)(*evicted_key))->key));
 	} else {
 		sprintf(sv_log, LOG_MISS, doc_name);
@@ -62,8 +61,7 @@ static response
 
 	char sv_log[MAX_LOG_LENGTH];
 	int log_length;
-
-	char *cached_content = lru_cache_get(s->cache, doc_name);
+	char *cached_content = ((info *)(lru_cache_get(s->cache, doc_name)))->value;
 	if (cached_content) {
 		sprintf(sv_log, LOG_HIT, doc_name);
 		res->server_response = cached_content;
@@ -77,8 +75,8 @@ static response
 		lru_cache_put(s->cache, doc_name, db_content, evicted_key);
 
 		if (evicted_key) {
-			ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
-				   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
+			ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key) + 1,
+				   ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value) + 1);
 			sprintf(sv_log, LOG_EVICT, doc_name, ((char *)((info *)(*evicted_key))->key));
 		}
 	} else {
@@ -98,7 +96,7 @@ server *init_server(unsigned int cache_size) {
 	server *sv = (server *)malloc(sizeof(server));
 	sv->cache = init_lru_cache(cache_size);
 	sv->queue = q_create(sizeof(request), TASK_QUEUE_SIZE);
-	sv->data_base = ht_create(HMAX, hash_string, compare_function_strings, key_val_free_function);
+	sv->data_base = ht_create(HMAX, hash_string, compare_function_strings, key_val_free_function, simple_copy);
 	return sv;
 }
 
