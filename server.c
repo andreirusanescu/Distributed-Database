@@ -11,18 +11,35 @@
 static response
 *server_edit_document(server *s, char *doc_name, char *doc_content) {
     void **evicted_key = NULL;
-    lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
+	response *res = (response *)malloc(sizeof(response));
+    res->server_id = 1;
+
+	if (lru_cache_get(s->cache, doc_name)) {
+		res->server_log = MSG_B;
+		res->server_response = LOG_HIT;
+		lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
+		ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
+		return res;
+	}
+
+	if (ht_has_key(s->data_base, doc_name)) {
+		res->server_log = MSG_B;
+	} else {
+		res->server_log = MSG_C;
+	}
+
+	lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
+	ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
 
     if (evicted_key) {
+		// adding evited key to memory
         ht_put(s->data_base, ((info *)(*evicted_key))->key, strlen(((info *)(*evicted_key))->key),
                ((info *)(*evicted_key))->value, strlen(((info *)(*evicted_key))->value));
-    }
+		res->server_response = LOG_EVICT;
+    } else {
+		res->server_response = LOG_MISS;
+	}
 
-    ht_put(s->data_base, doc_name, strlen(doc_name), doc_content, strlen(doc_content));
-    response *res = (response *)malloc(sizeof(response));
-    res->server_id = 1;
-    res->server_log = LOG_LAZY_EXEC;
-    res->server_response = MSG_A;
     return res;
 }
 
@@ -74,10 +91,10 @@ response *server_handle_request(server *s, request *req) {
         res = server_edit_document(s, req->doc_name, req->doc_content);
         q_enqueue(s->queue, req);
         return res;
-
     } else if (req->type == GET_DOCUMENT) {
+		request *aux;
         while (!q_is_empty(s->queue)) {
-            request *aux = (request *)q_front(s->queue);
+            aux = (request *)q_front(s->queue);
             if (aux->type == EDIT_DOCUMENT) {
                 PRINT_RESPONSE(server_edit_document(s, aux->doc_name, aux->doc_content));
             }
