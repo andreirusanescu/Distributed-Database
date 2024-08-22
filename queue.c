@@ -52,7 +52,7 @@ int q_dequeue(queue_t *q) {
 	if (!q || q->size == 0)
 		return 0;
 	void *aux = q->buff[0];
-	free_mem(&aux);
+	// free_mem(&aux);
 	// free(aux);
 	q->read_idx = (q->read_idx + 1) % q->max_size;
 	q->size--;

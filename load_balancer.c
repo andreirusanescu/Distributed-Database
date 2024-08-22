@@ -27,7 +27,7 @@ response *loader_forward_request(load_balancer* main, request *req) {
     if (!main || !req) return NULL;
 
     server *sv;
-    // unsigned int hash_val = main->hash_function_docs(req->doc_name);
+    unsigned int hash_val = main->hash_function_docs(req->doc_name);
     // unsigned int sv_index = hash_val % main->num_sv;
     // sv = main->servers[sv_index];
     sv = main->test_server;

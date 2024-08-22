@@ -54,7 +54,6 @@ ll_node_t* ll_remove_nth_node(linked_list_t* list, unsigned int n)
 		ll_node_t *p = list->head;
 		list->head = list->head->next;
 		list->size--;
-		p->data = NULL;
 		p->next = NULL;
 		return p;
 	} else if (n > 0) {
@@ -134,6 +133,7 @@ void key_val_free_function(void *data) {
 		pair->value = NULL;
 	}
 	free(pair);
+	pair = NULL;
 }
 
 // creeaza un hashtable;
@@ -188,34 +188,24 @@ void *ht_get(hashtable_t *ht, void *key)
 		return NULL;
 	unsigned int index = ht->hash_function(key) % ht->hmax;
 
-	ll_node_t *node = ht->buckets[index]->head;
-	while (node != NULL) {
-		info *pair = (info *)node->data;
+	ll_node_t *elem = ht->buckets[index]->head;
+	while (elem != NULL) {
+		info *pair = (info *)elem->data;
 		if (ht->compare_function(pair->key, key) == 0) {
 			return pair->value;
 		}
-		node = node->next;
+		elem = elem->next;
 	}
 	return NULL;
 }
 
 void node_copy(void **dst, void *src, unsigned int src_size) {
-	node *dest = (node *)(*dst);
-	node *source = (node *)(src);
-	
-	dest->data = malloc(sizeof(info));
-	int key_len = strlen(((info *)(source->data))->key) + 1;
-	int val_len = strlen(((info *)(source->data))->value) + 1;
-
-	((info *)dest->data)->key = malloc(key_len);
-	((info *)dest->data)->value = malloc(val_len);
-
-	memcpy(((info *)(dest->data))->key, ((info *)(source->data))->key, key_len);
-	memcpy(((info *)(dest->data))->value, ((info *)(source->data))->value, val_len);
+	(*dst) = src;
 	(void)src_size;
 }
 
 void simple_copy(void **dst, void *src, unsigned int src_size) {
+	*dst = malloc(src_size);
 	memcpy((*dst), src, src_size);
 }
 
@@ -226,26 +216,28 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	info *data = (info *)malloc(sizeof(info));
 	DIE(!data, "malloc() failed");
 	data->key = malloc(key_size);
-	data->value = malloc(value_size);
 	memcpy(data->key, key, key_size);
 	ht->copy_func(&data->value, value, value_size);
 
 	unsigned int index = ht->hash_function(key) % HMAX;
-	ll_node_t *node = ht->buckets[index]->head;
-	while (node != NULL) {
-		if (!ht->compare_function(((info*)(node->data))->key, data->key)) {
-			// am gasit cheia
-			// ht->key_val_free_function(((info*)(node->data))->value);
-			// free(((info*)(node->data))->key); // eliberez valorile vechi;
-			// free(((info*)(node->data))->value);
-			((info*)node->data)->key = data->key;
-			((info*)node->data)->value = data->value;
-			// free(data); // eliberez dublura;
+	ll_node_t *elem = ht->buckets[index]->head;
+	while (elem != NULL) {
+		/* same key => update value */
+		if (!ht->compare_function(((info *)(elem->data))->key, key)) {
+			void *aux = ((info*)elem->data)->value;
+			((info*)elem->data)->value = data->value;
+			if (aux && ((node *)aux)->data) {
+				// free(((info *)((node *)aux)->data)->key);
+				// free(((info *)((node *)aux)->data)->value);
+				// free(((node *)aux)->data);
+			}
+			free(aux);
 			return;
 		}
-		node = node->next;
+		elem = elem->next;
 	}
-	// nu am gasit deci e noua cheia asta
+
+	ht->size++;
 	ll_add_nth_node(ht->buckets[index], 0, data); // adaug data in lista;
 }
 
@@ -259,10 +251,10 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	for (int i = 0; node; i++) {
 		if (ht->compare_function(((info*)(node->data))->key, key) == 0) {
 			// am gasit cheia
-			free(((info*)(node->data))->key);
-			free(((info*)(node->data))->value);
-			free((info*)node->data);
-			ll_remove_nth_node(ht->buckets[index], i);
+			ht->key_val_free_function(node->data);
+			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
+			free(aux->data);
+			free(aux);
 			return;
 		}
 		node = node->next;
@@ -273,15 +265,15 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 void ht_free(hashtable_t *ht)
 {
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
-		ll_node_t* node = ht->buckets[i]->head;
-		for (int j = 0; node; j++) {
-			if ((info*)node->data) {
-				free(((info*)(node->data))->key);
-				free(((info*)(node->data))->value);
-				free((info*)node->data);
-				ll_remove_nth_node(ht->buckets[i], j);
+		ll_node_t* elem = ht->buckets[i]->head;
+		for (int j = 0; elem; j++) {
+			if ((info *)elem->data) {
+				key_val_free_function(elem->data);
+				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], j);
+				free(aux->data);
+				free(aux);
 			}
-			node = node->next;
+			elem = elem->next;
 		}
 		free(ht->buckets[i]);
 	}
@@ -300,6 +292,5 @@ unsigned int ht_get_hmax(hashtable_t *ht)
 {
 	if (!ht)
 		return 0;
-
 	return ht->hmax;
 }

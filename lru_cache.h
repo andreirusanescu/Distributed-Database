@@ -9,7 +9,6 @@
 #include "hash.h"
 
 typedef struct node {
-    int size;
     void *data;
     struct node *next;
     struct node *prev;
@@ -20,7 +19,7 @@ typedef struct lru_cache {
     unsigned int size;
     unsigned int capacity;
     node *head, *tail;
-    hashtable_t *h;
+    hashtable_t *map_string_to_node;
 } lru_cache;
 
 

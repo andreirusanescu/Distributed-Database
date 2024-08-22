@@ -20,7 +20,6 @@ static response
 		sprintf(sv_log, LOG_HIT, doc_name);
 		sprintf(sv_res, MSG_B, doc_name);
 		lru_cache_put(s->cache, doc_name, doc_content, evicted_key);
-		printf("MUIE2\n");
 		ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
 		goto res_fin;
 	}
@@ -61,7 +60,7 @@ static response
 
 	char sv_log[MAX_LOG_LENGTH];
 	int log_length;
-	char *cached_content = ((info *)(lru_cache_get(s->cache, doc_name)))->value;
+	char *cached_content = lru_cache_get(s->cache, doc_name);
 	if (cached_content) {
 		sprintf(sv_log, LOG_HIT, doc_name);
 		res->server_response = cached_content;
@@ -138,8 +137,8 @@ response *server_handle_request(server *s, request *req) {
 
 void free_server(server **s) {
 	if (s && *s) {
-		free_lru_cache(&(*s)->cache);
-		ht_free((*s)->data_base);
+		// free_lru_cache(&(*s)->cache);
+		// ht_free((*s)->data_base);
 		q_free((*s)->queue);
 		free(*s);
 	}

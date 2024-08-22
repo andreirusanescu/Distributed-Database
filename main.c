@@ -123,10 +123,10 @@ void apply_requests(FILE  *input_file, char *buffer,
             free(server_request.doc_content);
 
             PRINT_RESPONSE(response);
-            // exit(0);
+            
         }
     }
-
+    // exit(0);
     free_load_balancer(&main);
 }
 
