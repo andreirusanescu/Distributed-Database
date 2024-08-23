@@ -251,7 +251,6 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	for (int i = 0; node; i++) {
 		if (ht->compare_function(((info*)(node->data))->key, key) == 0) {
 			// am gasit cheia
-			ht->key_val_free_function(node->data);
 			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
 			free(aux->data);
 			free(aux);

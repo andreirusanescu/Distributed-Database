@@ -40,34 +40,33 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 	   if it does, updates the value and moves
 	   node to the beginning of the list 
 	*/
+
 	node *elem = (node *)ht_get(cache->map_string_to_node, key);
 	if (elem) {
 		// update
-		memcpy(((info *)elem->data)->value, value, strlen(value + 1));
+		memcpy(((info *)elem->data)->value, value, strlen(value) + 1);
 		// bring forward
 		lru_cache_get(cache, key);
 		return false;
 	}
 
 	/* cache is full, the last key has to be evicted */
-	if (cache->size == cache->capacity) {
-		if (cache->tail) {
-			node *aux = cache->tail;
-			cache->tail = cache->tail->prev;
-			if (cache->tail)
-				cache->tail->next = NULL;
 
-			(*evicted_key) = (info *)aux->data;
-			free(aux);
-			cache->size--;
-		}
+	if (cache->size == cache->capacity) {
+		node *aux = cache->tail;
+		cache->tail = cache->tail->prev;
+		if (cache->tail)
+			cache->tail->next = NULL;
+		*evicted_key = aux->data;
+		ht_remove_entry(cache->map_string_to_node, ((info *)aux->data)->key);
+		free(aux);
+		cache->size--;
 		if (!cache->size)
 			cache->head = cache->tail = NULL;
 	}
 
 
 	/* puts the pair (key, value) in the cache */
-
 	elem = (node *)malloc(sizeof(node));
 	elem->data = malloc(sizeof(info));
 	size_t key_size = strlen(key) + 1;
@@ -77,14 +76,15 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 	memcpy(((info *)elem->data)->key, key, key_size);
 	memcpy(((info *)elem->data)->value, value, value_size);
 
+	/* puts the node at the begginning */
 	elem->next = cache->head;
-    elem->prev = NULL;
-    if (cache->head)
-        cache->head->prev = elem;
-    cache->head = elem;
-    if (!cache->tail) {
-        cache->tail = elem;
-	}
+	elem->prev = NULL;
+	if (cache->head)
+		cache->head->prev = elem;
+	cache->head = elem;
+	if (!cache->size)
+		cache->tail = elem;
+
 	ht_put(cache->map_string_to_node, key, key_size, elem, sizeof(node));
 	cache->size++;
 	return true;
@@ -93,23 +93,23 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 void *lru_cache_get(lru_cache *cache, void *key) {
 	node *elem = (node *)ht_get(cache->map_string_to_node, key);
 
-    if (elem) {
-        if (elem != cache->head) {
-            if (elem->prev)
-                elem->prev->next = elem->next;
+	if (elem) {
+		if (elem != cache->head) {
+			if (elem->prev)
+				elem->prev->next = elem->next;
 
-            if (elem->next)
-                elem->next->prev = elem->prev;
+			if (elem->next)
+				elem->next->prev = elem->prev;
 
-            elem->next = cache->head;
+			elem->next = cache->head;
 			elem->prev = NULL;
-            cache->head->prev = elem;
-            
-            cache->head = elem;
-        }
-        return ((info *)elem->data)->value;
-    }
-    return NULL;
+			cache->head->prev = elem;
+			
+			cache->head = elem;
+		}
+		return ((info *)elem->data)->value;
+	}
+	return NULL;
 }
 
 void lru_cache_remove(lru_cache *cache, void *key) {
@@ -118,19 +118,19 @@ void lru_cache_remove(lru_cache *cache, void *key) {
 		return;
 
 	if (elem->prev) {
-        elem->prev->next = elem->next;
-    } else {
-        cache->head = elem->next;
-    }
+		elem->prev->next = elem->next;
+	} else {
+		cache->head = elem->next;
+	}
 
-    if (elem->next) {
-        elem->next->prev = elem->prev;
-    } else {
-        cache->tail = elem->prev;
-    }
+	if (elem->next) {
+		elem->next->prev = elem->prev;
+	} else {
+		cache->tail = elem->prev;
+	}
 
 	/* frees pair elem->data */
 	key_val_free_function(elem->data);
-    ht_remove_entry(cache->map_string_to_node, key); 
-    free(elem);
+	ht_remove_entry(cache->map_string_to_node, key); 
+	free(elem);
 }
