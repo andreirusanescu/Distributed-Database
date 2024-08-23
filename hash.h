@@ -44,7 +44,7 @@ struct hashtable_t {
 linked_list_t* ll_create(unsigned int data_size);
 
 // adauga un nou nod cu nod->data = new_data pe pozitia n;
-void ll_add_nth_node(linked_list_t* list, unsigned int n, const void* new_data);
+void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data);
 
 /*  elimina nodul de pe pozitia n, daca n < 0 se ignora, daca e mai mare decat
 *  numarul de noduri din lista, se elimina ultimul;

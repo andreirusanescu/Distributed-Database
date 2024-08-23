@@ -11,7 +11,7 @@
 static response
 *server_edit_document(server *s, char *doc_name, char *doc_content) {
 	void *evicted_key = NULL;
-	response *res = (response *)malloc(sizeof(response));
+	response *res = (response *)calloc(1, sizeof(response));
 	res->server_id = s->id;
 	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 	int log_length, res_length;
@@ -44,33 +44,45 @@ static response
 res_fin:
 
 	log_length = strlen(sv_log), res_length = strlen(sv_res);
-	res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
-	res->server_response = (char *)malloc((res_length + 1) * sizeof(char));
+	res->server_log = (char *)calloc((log_length + 1), sizeof(char));
+	res->server_response = (char *)calloc((res_length + 1), sizeof(char));
 	memcpy(res->server_log, sv_log, log_length + 1);
 	memcpy(res->server_response, sv_res, res_length + 1);
 
 	return res;
 }
 
+
+void print_cache(server *s) {
+	node *elem = s->cache->head;
+	printf("---------\n");
+	while (elem) {
+		printf("%s,%s\n", ((info *)elem->data)->key, ((info *)elem->data)->value);
+		elem = elem->next;
+	}
+	printf("---------\n");
+}
+
 static response
 *server_get_document(server *s, char *doc_name) {
 	void *evicted_key = NULL;
-	response *res = (response *)malloc(sizeof(response));
+	bool fault = false;
+	response *res = (response *)calloc(1, sizeof(response));
 	res->server_id = s->id;
 
-	char sv_log[MAX_LOG_LENGTH];
-	int log_length;
+	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
+	int log_length, res_length;
 	char *cached_content = lru_cache_get(s->cache, doc_name);
 	if (cached_content) {
 		sprintf(sv_log, LOG_HIT, doc_name);
-		res->server_response = cached_content;
+		sprintf(sv_res, "%s", cached_content);
 		goto res_fin2;
 	}
 
 	char *db_content = ht_get(s->data_base, doc_name);
 	if (db_content) {
 		sprintf(sv_log, LOG_MISS, doc_name);
-		res->server_response = db_content;
+		sprintf(sv_res, "%s", db_content);
 		lru_cache_put(s->cache, doc_name, db_content, &evicted_key);
 
 		if (evicted_key) {
@@ -81,18 +93,26 @@ static response
 	} else {
 		sprintf(sv_log, LOG_FAULT, doc_name);
 		res->server_response = NULL;
+		fault = true;
 	}
 
 res_fin2:
 	log_length = strlen(sv_log);
-	res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
+	res->server_log = (char *)calloc((log_length + 1), sizeof(char));
 	memcpy(res->server_log, sv_log, log_length + 1);
+
+	if (!fault) {
+		res_length = strlen(sv_res);
+		res->server_response = (char *)calloc((res_length + 1), sizeof(char));
+		memcpy(res->server_response, sv_res, res_length + 1);
+	}
+	
 
 	return res;
 }
 
 server *init_server(unsigned int cache_size) {
-	server *sv = (server *)malloc(sizeof(server));
+	server *sv = (server *)calloc(1, sizeof(server));
 	sv->cache = init_lru_cache(cache_size);
 	sv->queue = q_create(sizeof(request), TASK_QUEUE_SIZE);
 	sv->data_base = ht_create(HMAX, hash_string, compare_function_strings, key_val_free_function, simple_copy);
@@ -104,7 +124,7 @@ response *server_handle_request(server *s, request *req) {
 
 	if (req->type == EDIT_DOCUMENT) {
 		q_enqueue(s->queue, req);
-		res = (response *)malloc(sizeof(response));
+		res = (response *)calloc(1, sizeof(response));
 		res->server_id = s->id;
 		char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 
@@ -113,8 +133,8 @@ response *server_handle_request(server *s, request *req) {
 
 		int log_length = strlen(sv_log), res_length = strlen(sv_res);
 
-		res->server_log = (char *)malloc((log_length + 1) * sizeof(char));
-		res->server_response = (char *)malloc((res_length + 1) * sizeof(char));
+		res->server_log = (char *)calloc((log_length + 1), sizeof(char));
+		res->server_response = (char *)calloc((res_length + 1), sizeof(char));
 
 		memcpy(res->server_log, sv_log, log_length + 1);
 		memcpy(res->server_response, sv_res, res_length + 1);
@@ -138,8 +158,8 @@ response *server_handle_request(server *s, request *req) {
 
 void free_server(server **s) {
 	if (s && *s) {
-		// free_lru_cache(&(*s)->cache);
-		// ht_free((*s)->data_base);
+		free_lru_cache(&(*s)->cache);
+		ht_free((*s)->data_base);
 		q_free((*s)->queue);
 		free(*s);
 	}

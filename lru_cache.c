@@ -8,7 +8,7 @@
 #include "utils.h"
 
 lru_cache *init_lru_cache(unsigned int cache_capacity) {
-	lru_cache *lru = (lru_cache *)malloc(sizeof(lru_cache));
+	lru_cache *lru = (lru_cache *)calloc(1, sizeof(lru_cache));
 	DIE(!lru, "malloc() failed");
 	lru->capacity = cache_capacity;
 	lru->map_string_to_node = ht_create(HMAX, hash_string, compare_function_strings, key_val_free_function, node_copy);
@@ -26,8 +26,9 @@ void free_lru_cache(lru_cache **cache) {
 	while (elem) {
 		tmp = elem;
 		elem = elem->next;
-		key_val_free_function(elem->data);
+		key_val_free_function(tmp->data);
 		free(tmp);
+		tmp = NULL;
 	}
 	ht_free((*cache)->map_string_to_node);
 	free((*cache));
@@ -44,7 +45,12 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 	node *elem = (node *)ht_get(cache->map_string_to_node, key);
 	if (elem) {
 		// update
-		memcpy(((info *)elem->data)->value, value, strlen(value) + 1);
+		if (((info *)elem->data)->value != value) {
+			free(((info *)elem->data)->value);
+			((info *)elem->data)->value = NULL;
+			((info *)elem->data)->value = calloc(1, strlen(value) + 1);
+			memcpy(((info *)elem->data)->value, value, strlen(value) + 1);
+		}
 		// bring forward
 		lru_cache_get(cache, key);
 		return false;
@@ -67,12 +73,12 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 
 
 	/* puts the pair (key, value) in the cache */
-	elem = (node *)malloc(sizeof(node));
-	elem->data = malloc(sizeof(info));
+	elem = (node *)calloc(1, sizeof(node));
+	elem->data = calloc(1, sizeof(info));
 	size_t key_size = strlen(key) + 1;
 	size_t value_size = strlen(value) + 1;
-	((info *)elem->data)->key = malloc(key_size);
-	((info *)elem->data)->value = malloc(value_size);
+	((info *)elem->data)->key = calloc(1, key_size);
+	((info *)elem->data)->value = calloc(1, value_size);
 	memcpy(((info *)elem->data)->key, key, key_size);
 	memcpy(((info *)elem->data)->value, value, value_size);
 

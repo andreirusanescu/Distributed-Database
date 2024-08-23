@@ -18,14 +18,15 @@ ll_create(unsigned int data_size)
 }
 
 // adauga un nou nod cu nod->data = new_data pe pozitia n;
-void ll_add_nth_node(linked_list_t* list, unsigned int n, const void* new_data)
+void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 {
 	if (!list)
 		return;
 	ll_node_t *new_node = (ll_node_t *)malloc(sizeof(ll_node_t));
 	DIE(!new_node, "malloc() failed");
-	new_node->data = malloc(list->data_size);
-	memcpy(new_node->data, new_data, list->data_size);
+	// new_node->data = malloc(list->data_size);
+	// memcpy(new_node->data, new_data, list->data_size);
+	new_node->data = new_data;
 	new_node->next = NULL;
 	if (n == 0 || list->head == NULL) {
 		// head-ul e inlocuit
@@ -148,9 +149,9 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 	ht->buckets = (linked_list_t **)malloc(hmax * sizeof(linked_list_t *));
 	DIE(!ht->buckets, "malloc() failed");
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
-		ht->buckets[i] = malloc(sizeof(linked_list_t));
+		ht->buckets[i] = calloc(1, sizeof(linked_list_t));
 		if (!ht->buckets[i]) {
-			fprintf(stderr, "malloc() faled\n");
+			fprintf(stderr, "calloc() faled\n");
 			for (int j = i - 1; j >= 0; --j)
 				free(ht->buckets[i]);
 			free(ht->buckets);
@@ -200,12 +201,25 @@ void *ht_get(hashtable_t *ht, void *key)
 }
 
 void node_copy(void **dst, void *src, unsigned int src_size) {
-	(*dst) = src;
+	node *dest = calloc(1, sizeof(node)), *source = (node *)src;
+	int key_len, val_len;
+	dest->data = calloc(1, sizeof(info));
+
+	key_len = strlen(((info *)source->data)->key) + 1;
+	val_len = strlen(((info *)source->data)->value) + 1;
+
+	((info *)dest->data)->key = calloc(1, key_len);
+	((info *)dest->data)->value = calloc(1, val_len);
+
+	memcpy(((info *)dest->data)->key, ((info *)source->data)->key, key_len);
+	memcpy(((info *)dest->data)->value, ((info *)source->data)->value, val_len);
+
+	*dst = dest;
 	(void)src_size;
 }
 
 void simple_copy(void **dst, void *src, unsigned int src_size) {
-	*dst = malloc(src_size);
+	*dst = calloc(1, src_size);
 	memcpy((*dst), src, src_size);
 }
 
@@ -213,23 +227,15 @@ void simple_copy(void **dst, void *src, unsigned int src_size) {
 void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	void *value, unsigned int value_size)
 {
-	info *data = (info *)malloc(sizeof(info));
-	DIE(!data, "malloc() failed");
-	data->key = malloc(key_size);
-	memcpy(data->key, key, key_size);
-	ht->copy_func(&data->value, value, value_size);
-
 	unsigned int index = ht->hash_function(key) % HMAX;
 	ll_node_t *elem = ht->buckets[index]->head;
 	while (elem != NULL) {
 		/* same key => update value */
 		if (!ht->compare_function(((info *)(elem->data))->key, key)) {
 			void *aux = ((info*)elem->data)->value;
-			((info*)elem->data)->value = data->value;
-			if (aux && ((node *)aux)->data) {
-				// free(((info *)((node *)aux)->data)->key);
-				// free(((info *)((node *)aux)->data)->value);
-				// free(((node *)aux)->data);
+			((info*)elem->data)->value = value;
+			if (ht->copy_func == node_copy) {
+				printf("muie\n");
 			}
 			free(aux);
 			return;
@@ -237,6 +243,11 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 		elem = elem->next;
 	}
 
+	info *data = (info *)calloc(1, sizeof(info));
+	DIE(!data, "malloc() failed");
+	data->key = calloc(1, key_size);
+	memcpy(data->key, key, key_size);
+	ht->copy_func(&data->value, value, value_size);
 	ht->size++;
 	ll_add_nth_node(ht->buckets[index], 0, data); // adaug data in lista;
 }
@@ -247,16 +258,28 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	if (!ht)
 		return;
 	unsigned int index = ht->hash_function(key) % ht->hmax;
-	ll_node_t *node = ht->buckets[index]->head;
-	for (int i = 0; node; i++) {
-		if (ht->compare_function(((info*)(node->data))->key, key) == 0) {
+	ll_node_t *elem = ht->buckets[index]->head;
+	for (int i = 0; elem; i++) {
+		if (ht->compare_function(((info *)(elem->data))->key, key) == 0) {
 			// am gasit cheia
 			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
+			if (ht->copy_func == node_copy) {
+				free(((info *)((node *)((info *)aux->data)->value)->data)->value);
+				free(((info *)((node *)((info *)aux->data)->value)->data)->key);
+				free(((node *)((info *)aux->data)->value)->data);
+				((node *)((info *)aux->data)->value)->data = NULL;
+			} else {
+				free(((info *)aux->data)->key);
+				free(((info *)aux->data)->value);
+			}
+
 			free(aux->data);
+			aux->data = NULL;
 			free(aux);
+			aux = NULL;
 			return;
 		}
-		node = node->next;
+		elem = elem->next;
 	}
 }
 
@@ -265,14 +288,26 @@ void ht_free(hashtable_t *ht)
 {
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ll_node_t* elem = ht->buckets[i]->head;
-		for (int j = 0; elem; j++) {
+		while (elem) {
 			if ((info *)elem->data) {
-				key_val_free_function(elem->data);
-				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], j);
-				free(aux->data);
-				free(aux);
+				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);	
+				if (aux && aux->data) {
+					if (ht->copy_func == node_copy) {
+						free(((info *)((node *)((info *)aux->data)->value)->data)->value);
+						free(((info *)((node *)((info *)aux->data)->value)->data)->key);
+						free(((node *)((info *)aux->data)->value)->data);
+						((node *)((info *)aux->data)->value)->data = NULL;
+					} else {
+						free(((info *)aux->data)->key);
+						free(((info *)aux->data)->value);
+					}
+					free(aux->data);
+					aux->data = NULL;
+					free(aux);
+					aux = NULL;
+				}
 			}
-			elem = elem->next;
+			elem = ht->buckets[i]->head;
 		}
 		free(ht->buckets[i]);
 	}

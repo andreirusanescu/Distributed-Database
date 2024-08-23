@@ -118,12 +118,8 @@ void apply_requests(FILE  *input_file, char *buffer,
             }
 
             response *response = loader_forward_request(main, &server_request);
-            
-            free(server_request.doc_name);
-            free(server_request.doc_content);
-
             PRINT_RESPONSE(response);
-            
+
         }
     }
     // exit(0);
