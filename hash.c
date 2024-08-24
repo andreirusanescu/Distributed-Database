@@ -234,18 +234,16 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	while (elem != NULL) {
 		/* same key => update value */
 		if (!ht->compare_function(((info *)(elem->data))->key, key)) {
-			if (((info*)elem->data)->value != value) {
-				void *aux = ((info*)elem->data)->value;
+			if (((info*)elem->data)->value != value && strcmp(((info*)elem->data)->value, value)) {
+				free(((info*)elem->data)->value);
+				((info*)elem->data)->value = NULL;
 				((info*)elem->data)->value = calloc(1, strlen(value) + 1);
 				memcpy(((info*)elem->data)->value, value, strlen(value) + 1);
-				free(aux);
-				aux = NULL;	
 			}
 			return;
 		}
 		elem = elem->next;
 	}
-
 	info *data = (info *)calloc(1, sizeof(info));
 	DIE(!data, "malloc() failed");
 	data->key = calloc(1, key_size);

@@ -80,8 +80,9 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 		free(aux);
 		aux = NULL;
 		cache->size--;
-		if (!cache->size)
+		if (!cache->size) {
 			cache->head = cache->tail = NULL;
+		}
 	}
 
 
@@ -103,7 +104,6 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 	cache->head = elem;
 	if (!cache->size)
 		cache->tail = elem;
-
 	ht_put(cache->map_string_to_node, key, key_size, elem, sizeof(node));
 	cache->size++;
 	return true;

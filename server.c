@@ -21,6 +21,12 @@ static response
 		sprintf(sv_res, MSG_B, doc_name);
 		lru_cache_put(s->cache, doc_name, doc_content, &evicted_key);
 		ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
+		if (evicted_key) {
+			free(((info *)(evicted_key))->key);
+			free(((info *)(evicted_key))->value);
+			free(evicted_key);
+			evicted_key = NULL;
+		}
 		goto res_fin;
 	}
 
@@ -40,6 +46,7 @@ static response
 		free(((info *)(evicted_key))->key);
 		free(((info *)(evicted_key))->value);
 		free(evicted_key);
+		evicted_key = NULL;
 	} else {
 		sprintf(sv_log, LOG_MISS, doc_name);
 	}
@@ -81,6 +88,10 @@ static response
 			ht_put(s->data_base, ((info *)(evicted_key))->key, strlen(((info *)(evicted_key))->key) + 1,
 				   ((info *)(evicted_key))->value, strlen(((info *)(evicted_key))->value) + 1);
 			sprintf(sv_log, LOG_EVICT, doc_name, ((char *)((info *)(evicted_key))->key));
+			free(((info *)(evicted_key))->key);
+			free(((info *)(evicted_key))->value);
+			free(evicted_key);
+			evicted_key = NULL;
 		}
 	} else {
 		sprintf(sv_log, LOG_FAULT, doc_name);
@@ -137,10 +148,8 @@ response *server_handle_request(server *s, request *req) {
 			aux = (request *)q_front(s->queue);
 			res = server_edit_document(s, aux->doc_name, aux->doc_content);
 			PRINT_RESPONSE(res);
-			// puts("PULA");
 			q_dequeue(s->queue);
 		}
-		
 		res = server_get_document(s, req->doc_name);
 		return res;
 	}
