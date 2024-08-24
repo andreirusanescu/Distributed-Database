@@ -19,10 +19,22 @@ bool lru_cache_is_full(lru_cache *cache) {
 	return cache->size == cache->capacity;
 }
 
+// void print_cache(lru_cache *cache) {
+// 	node *elem = cache->head;
+// 	printf("---------\n");
+// 	while (elem) {
+// 		printf("%s,%s\n", ((info *)elem->data)->key, ((info *)elem->data)->value);
+// 		elem = elem->next;
+// 	}
+// 	printf("---------\n");
+// }
+
 void free_lru_cache(lru_cache **cache) {
 	if (!*cache || !cache) return;
 
 	node *elem = (*cache)->head, *tmp;
+	
+	ht_free((*cache)->map_string_to_node);
 	while (elem) {
 		tmp = elem;
 		elem = elem->next;
@@ -30,8 +42,8 @@ void free_lru_cache(lru_cache **cache) {
 		free(tmp);
 		tmp = NULL;
 	}
-	ht_free((*cache)->map_string_to_node);
 	free((*cache));
+	*cache = NULL;
 }
 
 bool lru_cache_put(lru_cache *cache, void *key, void *value,
@@ -51,7 +63,7 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 			((info *)elem->data)->value = calloc(1, strlen(value) + 1);
 			memcpy(((info *)elem->data)->value, value, strlen(value) + 1);
 		}
-		// bring forward
+		/* bring forward */
 		lru_cache_get(cache, key);
 		return false;
 	}
@@ -66,6 +78,7 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 		*evicted_key = aux->data;
 		ht_remove_entry(cache->map_string_to_node, ((info *)aux->data)->key);
 		free(aux);
+		aux = NULL;
 		cache->size--;
 		if (!cache->size)
 			cache->head = cache->tail = NULL;

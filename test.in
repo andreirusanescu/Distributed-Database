@@ -1,8 +1,10 @@
-7
-ADD_SERVER 1 1
-EDIT "manager.txt" "Box understand feel."
-GET "manager.txt"
-EDIT "another_manager.txt" "Mouth attorney."
-GET "another_manager.txt"
-GET "manager.txt"
-GET "another_manager.txt"
+9
+ADD_SERVER 1 5
+EDIT "image_kind_leg.txt" "Box understand feel."
+EDIT "wish_service.txt" "Mouth attorney."
+EDIT "seem_fund_result.txt" "Still spring former."
+GET "image_kind_leg.txt"
+GET "wish_service.txt"
+GET "seem_fund_result.txt"
+EDIT "image_kind_leg.txt" "Across bank lose."
+EDIT "wish_service.txt" "Its she many."

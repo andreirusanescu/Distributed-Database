@@ -24,8 +24,6 @@ void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 		return;
 	ll_node_t *new_node = (ll_node_t *)malloc(sizeof(ll_node_t));
 	DIE(!new_node, "malloc() failed");
-	// new_node->data = malloc(list->data_size);
-	// memcpy(new_node->data, new_data, list->data_size);
 	new_node->data = new_data;
 	new_node->next = NULL;
 	if (n == 0 || list->head == NULL) {
@@ -125,16 +123,19 @@ int compare_function_strings(void *a, void *b)
 // in acest caz stiu ca lucrez cu structuri de tipul info;
 void key_val_free_function(void *data) {
 	info *pair = (info *)data;
-	if (pair->key != NULL) {
-		free(pair->key);
-		pair->key = NULL;
+	if (pair) {
+		if (pair->key != NULL) {
+			free(pair->key);
+			pair->key = NULL;
+		}
+		if (pair->value != NULL) {
+			free(pair->value);
+			pair->value = NULL;
+		}
+		free(pair);
+		pair = NULL;
 	}
-	if (pair->value != NULL) {
-		free(pair->value);
-		pair->value = NULL;
-	}
-	free(pair);
-	pair = NULL;
+	
 }
 
 // creeaza un hashtable;
@@ -201,20 +202,21 @@ void *ht_get(hashtable_t *ht, void *key)
 }
 
 void node_copy(void **dst, void *src, unsigned int src_size) {
-	node *dest = calloc(1, sizeof(node)), *source = (node *)src;
-	int key_len, val_len;
-	dest->data = calloc(1, sizeof(info));
+	*dst = src;
+	// node *dest = calloc(1, sizeof(node)), *source = (node *)src;
+	// int key_len, val_len;
+	// dest->data = calloc(1, sizeof(info));
 
-	key_len = strlen(((info *)source->data)->key) + 1;
-	val_len = strlen(((info *)source->data)->value) + 1;
+	// key_len = strlen(((info *)source->data)->key) + 1;
+	// val_len = strlen(((info *)source->data)->value) + 1;
 
-	((info *)dest->data)->key = calloc(1, key_len);
-	((info *)dest->data)->value = calloc(1, val_len);
+	// ((info *)dest->data)->key = calloc(1, key_len);
+	// ((info *)dest->data)->value = calloc(1, val_len);
 
-	memcpy(((info *)dest->data)->key, ((info *)source->data)->key, key_len);
-	memcpy(((info *)dest->data)->value, ((info *)source->data)->value, val_len);
+	// memcpy(((info *)dest->data)->key, ((info *)source->data)->key, key_len);
+	// memcpy(((info *)dest->data)->value, ((info *)source->data)->value, val_len);
 
-	*dst = dest;
+	// *dst = dest;
 	(void)src_size;
 }
 
@@ -232,12 +234,13 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	while (elem != NULL) {
 		/* same key => update value */
 		if (!ht->compare_function(((info *)(elem->data))->key, key)) {
-			void *aux = ((info*)elem->data)->value;
-			((info*)elem->data)->value = value;
-			if (ht->copy_func == node_copy) {
-				printf("muie\n");
+			if (((info*)elem->data)->value != value) {
+				void *aux = ((info*)elem->data)->value;
+				((info*)elem->data)->value = calloc(1, strlen(value) + 1);
+				memcpy(((info*)elem->data)->value, value, strlen(value) + 1);
+				free(aux);
+				aux = NULL;	
 			}
-			free(aux);
 			return;
 		}
 		elem = elem->next;
@@ -263,16 +266,12 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 		if (ht->compare_function(((info *)(elem->data))->key, key) == 0) {
 			// am gasit cheia
 			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
-			if (ht->copy_func == node_copy) {
-				free(((info *)((node *)((info *)aux->data)->value)->data)->value);
-				free(((info *)((node *)((info *)aux->data)->value)->data)->key);
-				free(((node *)((info *)aux->data)->value)->data);
-				((node *)((info *)aux->data)->value)->data = NULL;
-			} else {
-				free(((info *)aux->data)->key);
+			if (ht->copy_func == simple_copy) {
 				free(((info *)aux->data)->value);
+				((info *)aux->data)->value = NULL;
 			}
-
+			free(((info *)aux->data)->key);
+			((info *)aux->data)->key = NULL;
 			free(aux->data);
 			aux->data = NULL;
 			free(aux);
@@ -292,15 +291,12 @@ void ht_free(hashtable_t *ht)
 			if ((info *)elem->data) {
 				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);	
 				if (aux && aux->data) {
-					if (ht->copy_func == node_copy) {
-						free(((info *)((node *)((info *)aux->data)->value)->data)->value);
-						free(((info *)((node *)((info *)aux->data)->value)->data)->key);
-						free(((node *)((info *)aux->data)->value)->data);
-						((node *)((info *)aux->data)->value)->data = NULL;
-					} else {
-						free(((info *)aux->data)->key);
+					if (ht->copy_func == simple_copy) {
 						free(((info *)aux->data)->value);
+						((info *)aux->data)->value = NULL;
 					}
+					free(((info *)aux->data)->key);
+					((info *)aux->data)->key = NULL;
 					free(aux->data);
 					aux->data = NULL;
 					free(aux);

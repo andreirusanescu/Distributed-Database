@@ -39,8 +39,11 @@ void *q_front(queue_t *q) {
 
 void free_mem(void **data) {
 	free((((request *)(*data)))->doc_content);
+	(((request *)(*data)))->doc_content = NULL;
 	free((((request *)(*data)))->doc_name);
+	(((request *)(*data)))->doc_name = NULL;
 	free(*data);
+	*data = NULL;
 }
 
 /*
@@ -51,9 +54,14 @@ void free_mem(void **data) {
 int q_dequeue(queue_t *q) {
 	if (!q || q->size == 0)
 		return 0;
-	// void *aux = q->buff[0];
+	request *aux = q->buff[q->read_idx];
+	free(aux->doc_content);
+	aux->doc_content = NULL;
+	free(aux->doc_name);
+	aux->doc_name = NULL;
+	free(aux);
+	aux = NULL;
 	// free_mem(&aux);
-	// free(aux);
 	q->read_idx = (q->read_idx + 1) % q->max_size;
 	q->size--;
 	return 1;
@@ -64,7 +72,6 @@ int q_dequeue(queue_t *q) {
  */
 void deep_copy(void **elem, void *data) {
 	request *src = (request *)data;
-
 	int content_len = strlen(src->doc_content);
 	int name_len = strlen(src->doc_name);
 	((request *)(*elem))->doc_content = (char *)calloc((content_len + 1), sizeof(char));
@@ -100,6 +107,8 @@ void q_clear(queue_t *q) {
  * Functia elibereaza toata memoria ocupata de coada.
  */
 void q_free(queue_t *q) {
+
+	q_clear(q);
 	free(q->buff);
 	free(q);
 }

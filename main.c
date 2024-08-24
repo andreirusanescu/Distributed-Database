@@ -119,11 +119,13 @@ void apply_requests(FILE  *input_file, char *buffer,
 
             response *response = loader_forward_request(main, &server_request);
             PRINT_RESPONSE(response);
-
+            free(server_request.doc_content);
+            free(server_request.doc_name);
         }
     }
     // exit(0);
     free_load_balancer(&main);
+
 }
 
 int main(int argc, char **argv) {

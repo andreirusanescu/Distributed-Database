@@ -34,9 +34,12 @@ static response
 	ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
 	if (evicted_key) {
 		// adding evicted key to memory
+		sprintf(sv_log, LOG_EVICT, doc_name, (char *)(((info *)(evicted_key))->key));
 		ht_put(s->data_base, ((info *)(evicted_key))->key, strlen(((info *)(evicted_key))->key) + 1,
 			   ((info *)(evicted_key))->value, strlen(((info *)(evicted_key))->value) + 1);
-		sprintf(sv_log, LOG_EVICT, doc_name, (char *)(((info *)(evicted_key))->key));
+		free(((info *)(evicted_key))->key);
+		free(((info *)(evicted_key))->value);
+		free(evicted_key);
 	} else {
 		sprintf(sv_log, LOG_MISS, doc_name);
 	}
@@ -50,17 +53,6 @@ res_fin:
 	memcpy(res->server_response, sv_res, res_length + 1);
 
 	return res;
-}
-
-
-void print_cache(server *s) {
-	node *elem = s->cache->head;
-	printf("---------\n");
-	while (elem) {
-		printf("%s,%s\n", ((info *)elem->data)->key, ((info *)elem->data)->value);
-		elem = elem->next;
-	}
-	printf("---------\n");
 }
 
 static response
@@ -145,7 +137,7 @@ response *server_handle_request(server *s, request *req) {
 			aux = (request *)q_front(s->queue);
 			res = server_edit_document(s, aux->doc_name, aux->doc_content);
 			PRINT_RESPONSE(res);
-			
+			// puts("PULA");
 			q_dequeue(s->queue);
 		}
 		
@@ -158,9 +150,12 @@ response *server_handle_request(server *s, request *req) {
 
 void free_server(server **s) {
 	if (s && *s) {
-		free_lru_cache(&(*s)->cache);
-		ht_free((*s)->data_base);
+		
+		
 		q_free((*s)->queue);
+		ht_free((*s)->data_base);
+		free_lru_cache(&(*s)->cache);
 		free(*s);
+		*s = NULL;
 	}
 }
