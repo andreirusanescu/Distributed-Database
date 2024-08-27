@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #ifndef SERVER_H
@@ -28,9 +28,9 @@ typedef struct request {
 } request;
 
 typedef struct response {
-    char *server_log; // MAX_LOG_LENGTH string
-    char *server_response; // MAX_RESPONSE_LENGTH string
-    int server_id; // of the server that executed the request
+    char *server_log;
+    char *server_response;
+    int server_id;
 } response;
 
 

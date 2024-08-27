@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #ifndef LOAD_BALANCER_H

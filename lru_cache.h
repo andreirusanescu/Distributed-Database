@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #ifndef LRU_CACHE_H
@@ -15,7 +15,6 @@ typedef struct node {
 } node;
 
 typedef struct lru_cache {
-    /* TODO */
     unsigned int size;
     unsigned int capacity;
     node *head, *tail;

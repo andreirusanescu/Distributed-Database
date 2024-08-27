@@ -1,6 +1,11 @@
+/*
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "hash.h"
 #include "lru_cache.h"
 #include "utils.h"
@@ -17,7 +22,6 @@ ll_create(unsigned int data_size)
 	return list;
 }
 
-// adauga un nou nod cu nod->data = new_data pe pozitia n;
 void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 {
 	if (!list)
@@ -27,7 +31,6 @@ void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 	new_node->data = new_data;
 	new_node->next = NULL;
 	if (n == 0 || list->head == NULL) {
-		// head-ul e inlocuit
 		ll_node_t *aux = list->head;
 		list->head = new_node;
 		new_node->next = aux;
@@ -38,14 +41,12 @@ void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 			n = list->size;
 		for (unsigned int i = 0; i < n && p->next != NULL; ++i)
 			p = p->next;
-		new_node->next = p->next; // iau valoarea lui v[n];
-		p->next = new_node; // v[n] = ala adaugat, v[n + 1] e v[n] ul de dinainte;
+		new_node->next = p->next;
+		p->next = new_node;
 		list->size++;
 	}
 }
 
-// elimina nodul de pe pozitia n, daca n < 0 se ignora, daca e mai mare decat
-// numarul de noduri din lista, se elimina ultimul;
 ll_node_t* ll_remove_nth_node(linked_list_t* list, unsigned int n)
 {
 	if (n == 0 && list->head != NULL) {
@@ -74,7 +75,6 @@ ll_node_t* ll_remove_nth_node(linked_list_t* list, unsigned int n)
 	return NULL;
 }
 
-// Functia intoarce nr de noduri din lista
 unsigned int ll_get_size(linked_list_t* list)
 {
 	if (!list)
@@ -82,7 +82,6 @@ unsigned int ll_get_size(linked_list_t* list)
 	return list->size;
 }
 
-// elibereaza tot
 void ll_free(linked_list_t** pp_list)
 {
 	if (!pp_list || !*pp_list)
@@ -99,7 +98,6 @@ void ll_free(linked_list_t** pp_list)
 	*pp_list = NULL;
 }
 
-// Functii de comparare a cheilor:
 int compare_function_ints(void *a, void *b)
 {
 	int int_a = *((int *)a);
@@ -108,8 +106,7 @@ int compare_function_ints(void *a, void *b)
 		return 0;
 	else if (int_a < int_b)
 		return -1;
-	else
-		return 1;
+	return 1;
 }
 
 int compare_function_strings(void *a, void *b)
@@ -119,8 +116,6 @@ int compare_function_strings(void *a, void *b)
 	return strcmp(str_a, str_b);
 }
 
-// elibereaza memoria folosita de data;
-// in acest caz stiu ca lucrez cu structuri de tipul info;
 void key_val_free_function(void *data) {
 	info *pair = (info *)data;
 	if (pair) {
@@ -135,10 +130,8 @@ void key_val_free_function(void *data) {
 		free(pair);
 		pair = NULL;
 	}
-	
 }
 
-// creeaza un hashtable;
 hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 		int (*compare_function)(void*, void*),
 		void (*key_val_free_function)(void*),
@@ -159,7 +152,7 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 			free(ht);
 			return NULL;
 		}
-		ht->buckets[i]->head = NULL; // lucrez cu structuri info
+		ht->buckets[i]->head = NULL;
 		ht->buckets[i]->data_size = sizeof(info);
 		ht->buckets[i]->size = 0;
 	}
@@ -170,7 +163,6 @@ hashtable_t *ht_create(unsigned int hmax, unsigned int (*hash_function)(void*),
 	return ht;
 }
 
-// verifica tot tabelul dupa cheie;
 int ht_has_key(hashtable_t *ht, void *key)
 {
 	unsigned int index = ht->hash_function(key) % ht->hmax;
@@ -183,7 +175,6 @@ int ht_has_key(hashtable_t *ht, void *key)
 	return 0;
 }
 
-// intoarce pointerul catre data asociata cheii key;
 void *ht_get(hashtable_t *ht, void *key)
 {
 	if (!ht)
@@ -203,20 +194,6 @@ void *ht_get(hashtable_t *ht, void *key)
 
 void node_copy(void **dst, void *src, unsigned int src_size) {
 	*dst = src;
-	// node *dest = calloc(1, sizeof(node)), *source = (node *)src;
-	// int key_len, val_len;
-	// dest->data = calloc(1, sizeof(info));
-
-	// key_len = strlen(((info *)source->data)->key) + 1;
-	// val_len = strlen(((info *)source->data)->value) + 1;
-
-	// ((info *)dest->data)->key = calloc(1, key_len);
-	// ((info *)dest->data)->value = calloc(1, val_len);
-
-	// memcpy(((info *)dest->data)->key, ((info *)source->data)->key, key_len);
-	// memcpy(((info *)dest->data)->value, ((info *)source->data)->value, val_len);
-
-	// *dst = dest;
 	(void)src_size;
 }
 
@@ -225,7 +202,6 @@ void simple_copy(void **dst, void *src, unsigned int src_size) {
 	memcpy((*dst), src, src_size);
 }
 
-// incarca / updateaza un camp din hashtable;
 void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	void *value, unsigned int value_size)
 {
@@ -234,12 +210,13 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	while (elem != NULL) {
 		/* same key => update value */
 		if (!ht->compare_function(((info *)(elem->data))->key, key)) {
-			if (((info*)elem->data)->value != value && strcmp(((info*)elem->data)->value, value)) {
+			if (((info*)elem->data)->value != value &&
+				strcmp(((info*)elem->data)->value, value)) {
 				free(((info*)elem->data)->value);
-				((info*)elem->data)->value = NULL;
 				((info*)elem->data)->value = calloc(1, strlen(value) + 1);
 				memcpy(((info*)elem->data)->value, value, strlen(value) + 1);
 			}
+
 			return;
 		}
 		elem = elem->next;
@@ -250,10 +227,9 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	memcpy(data->key, key, key_size);
 	ht->copy_func(&data->value, value, value_size);
 	ht->size++;
-	ll_add_nth_node(ht->buckets[index], 0, data); // adaug data in lista;
+	ll_add_nth_node(ht->buckets[index], 0, data);
 }
 
-// elibereaza un camp din hashtable pe baza cheii
 void ht_remove_entry(hashtable_t *ht, void *key)
 {
 	if (!ht)
@@ -262,7 +238,6 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	ll_node_t *elem = ht->buckets[index]->head;
 	for (int i = 0; elem; i++) {
 		if (ht->compare_function(((info *)(elem->data))->key, key) == 0) {
-			// am gasit cheia
 			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
 			if (ht->copy_func == simple_copy) {
 				free(((info *)aux->data)->value);
@@ -280,14 +255,13 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	}
 }
 
-// elibereaza tot;
 void ht_free(hashtable_t *ht)
 {
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ll_node_t* elem = ht->buckets[i]->head;
 		while (elem) {
-			if ((info *)elem->data) {
-				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);	
+			if (elem->data) {
+				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);
 				if (aux && aux->data) {
 					if (ht->copy_func == simple_copy) {
 						free(((info *)aux->data)->value);

@@ -1,62 +1,68 @@
+/*
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
+ */
+
 #ifndef QUEUE_H
 #define QUEUE_H
 
 typedef struct queue_t queue_t;
 struct queue_t
 {
-	/* Dimensiunea maxima a cozii */
+	/* Max size for queue */
 	unsigned int max_size;
-	/* Dimensiunea cozii */
+	/* Actual size of queue */
 	unsigned int size;
-	/* Dimensiunea in octeti a tipului de date stocat in coada */
+	/* Size in bytes of the data added in queue */
 	unsigned int data_size;
-	/* Indexul de la care se vor efectua operatiile de front si dequeue */
+	/* Index for dequeue and front operations */
 	unsigned int read_idx;
-	/* Indexul de la care se vor efectua operatiile de enqueue */
+	/* Index for enqueue */
 	unsigned int write_idx;
-	/* Bufferul ce stocheaza elementele cozii */
+	/* Buffer that contains queue elements */
 	void **buff;
 };
 
+/*
+ * Creates a queue of max_size elements of data_size size in bytes
+ */
 queue_t *q_create(unsigned int data_size, unsigned int max_size);
 
 /*
- * Functia intoarce numarul de elemente din coada al carei pointer este trimis
- * ca parametru.
+ * Returns the size of the queue.
  */
 unsigned int q_get_size(queue_t *q);
 
 /*
- * Functia intoarce 1 daca coada este goala si 0 in caz contrar.
+ * Returns 1 if queue is empty and 0 on the contrary.
  */
 unsigned int q_is_empty(queue_t *q);
 
 /* 
- * Functia intoarce primul element din coada, fara sa il elimine.
+ * Returns the first element of the queue.
  */
 void *q_front(queue_t *q);
 
-/*
- * Functia scoate un element din coada. Se va intoarce 1 daca operatia s-a
- * efectuat cu succes (exista cel putin un element pentru a fi eliminat) si
- * 0 in caz contrar.
+/* 
+ * Removes an element from queue. Returns 1 if
+ * the element was removed successfully (queue is not empty)
+ * and 0 on the contrary
  */
 int q_dequeue(queue_t *q);
 
 /* 
- * Functia introduce un nou element in coada. Se va intoarce 1 daca
- * operatia s-a efectuat cu succes (nu s-a atins dimensiunea maxima) 
- * si 0 in caz contrar.
+ * Adds a new element in queue. Returns 1 if
+ * the element was added successfully (queue is not full)
+ * and 0 on the contrary
  */
 int q_enqueue(queue_t *q, void *new_data);
 
 /*
- * Functia elimina toate elementele din coada primita ca parametru.
+ * Eliminates all of the elements from the queue
  */
 void q_clear(queue_t *q);
 
 /*
- * Functia elibereaza toata memoria ocupata de coada.
+ * Frees the queue entirely
  */
 void q_free(queue_t *q);
 

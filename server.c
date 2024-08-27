@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #include <stdio.h>
+
 #include "server.h"
 #include "lru_cache.h"
-
 #include "utils.h"
 
 static response
@@ -20,31 +20,42 @@ static response
 		sprintf(sv_log, LOG_HIT, doc_name);
 		sprintf(sv_res, MSG_B, doc_name);
 		lru_cache_put(s->cache, doc_name, doc_content, &evicted_key);
-		ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
+		ht_put(s->data_base, doc_name, strlen(doc_name) + 1,
+			   doc_content, strlen(doc_content) + 1);
 		if (evicted_key) {
-			free(((info *)(evicted_key))->key);
-			free(((info *)(evicted_key))->value);
+			free(((info *)((node *)evicted_key)->data)->key);
+			free(((info *)((node *)evicted_key)->data)->value);
+			free(((node *)evicted_key)->data);
+			((node *)evicted_key)->data = NULL;
 			free(evicted_key);
 			evicted_key = NULL;
 		}
 		goto res_fin;
 	}
 
-	
 	if (ht_has_key(s->data_base, doc_name)) {
 		sprintf(sv_res, MSG_B, doc_name);
 	} else {
 		sprintf(sv_res, MSG_C, doc_name);
 	}
 	lru_cache_put(s->cache, doc_name, doc_content, &evicted_key);
-	ht_put(s->data_base, doc_name, strlen(doc_name) + 1, doc_content, strlen(doc_content) + 1);
+	ht_put(s->data_base, doc_name, strlen(doc_name) + 1,
+		   doc_content, strlen(doc_content) + 1);
+
 	if (evicted_key) {
 		// adding evicted key to memory
-		sprintf(sv_log, LOG_EVICT, doc_name, (char *)(((info *)(evicted_key))->key));
-		ht_put(s->data_base, ((info *)(evicted_key))->key, strlen(((info *)(evicted_key))->key) + 1,
-			   ((info *)(evicted_key))->value, strlen(((info *)(evicted_key))->value) + 1);
-		free(((info *)(evicted_key))->key);
-		free(((info *)(evicted_key))->value);
+		sprintf(sv_log, LOG_EVICT, doc_name,
+				(char *)(((info *)((node *)evicted_key)->data)->key));
+		ht_put(s->data_base, ((info *)((node *)evicted_key)->data)->key,
+			   strlen(((info *)((node *)evicted_key)->data)->key) + 1,
+			   ((info *)((node *)evicted_key)->data)->value,
+			   strlen((((info *)((node *)evicted_key)->data)->value)) + 1);
+
+		free(((info *)((node *)evicted_key)->data)->key);
+		free(((info *)((node *)evicted_key)->data)->value);
+		free(((node *)evicted_key)->data);
+		((node *)evicted_key)->data = NULL;
+
 		free(evicted_key);
 		evicted_key = NULL;
 	} else {
@@ -52,7 +63,6 @@ static response
 	}
 
 res_fin:
-
 	log_length = strlen(sv_log), res_length = strlen(sv_res);
 	res->server_log = (char *)calloc((log_length + 1), sizeof(char));
 	res->server_response = (char *)calloc((res_length + 1), sizeof(char));
@@ -85,11 +95,17 @@ static response
 		lru_cache_put(s->cache, doc_name, db_content, &evicted_key);
 
 		if (evicted_key) {
-			ht_put(s->data_base, ((info *)(evicted_key))->key, strlen(((info *)(evicted_key))->key) + 1,
-				   ((info *)(evicted_key))->value, strlen(((info *)(evicted_key))->value) + 1);
-			sprintf(sv_log, LOG_EVICT, doc_name, ((char *)((info *)(evicted_key))->key));
-			free(((info *)(evicted_key))->key);
-			free(((info *)(evicted_key))->value);
+			sprintf(sv_log, LOG_EVICT, doc_name,
+					(char *)(((info *)((node *)evicted_key)->data)->key));
+			ht_put(s->data_base, ((info *)((node *)evicted_key)->data)->key,
+				   strlen(((info *)((node *)evicted_key)->data)->key) + 1,
+				   ((info *)((node *)evicted_key)->data)->value,
+				   strlen((((info *)((node *)evicted_key)->data)->value)) + 1);
+
+			free(((info *)((node *)evicted_key)->data)->key);
+			free(((info *)((node *)evicted_key)->data)->value);
+			free(((node *)evicted_key)->data);
+			((node *)evicted_key)->data = NULL;
 			free(evicted_key);
 			evicted_key = NULL;
 		}
@@ -109,7 +125,6 @@ res_fin2:
 		res->server_response = (char *)calloc((res_length + 1), sizeof(char));
 		memcpy(res->server_response, sv_res, res_length + 1);
 	}
-	
 
 	return res;
 }
@@ -118,7 +133,8 @@ server *init_server(unsigned int cache_size) {
 	server *sv = (server *)calloc(1, sizeof(server));
 	sv->cache = init_lru_cache(cache_size);
 	sv->queue = q_create(sizeof(request), TASK_QUEUE_SIZE);
-	sv->data_base = ht_create(HMAX, hash_string, compare_function_strings, key_val_free_function, simple_copy);
+	sv->data_base = ht_create(HMAX, hash_string, compare_function_strings,
+							  key_val_free_function, simple_copy);
 	return sv;
 }
 
@@ -159,8 +175,6 @@ response *server_handle_request(server *s, request *req) {
 
 void free_server(server **s) {
 	if (s && *s) {
-		
-		
 		q_free((*s)->queue);
 		ht_free((*s)->data_base);
 		free_lru_cache(&(*s)->cache);

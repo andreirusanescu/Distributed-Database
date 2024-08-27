@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #ifndef UTILS_H
@@ -11,7 +11,6 @@
 #include <string.h>
 
 #include "constants.h"
-
 #define DIE(assertion, call_description)                                      \
     do {                                                                      \
         if (assertion) {                                                      \

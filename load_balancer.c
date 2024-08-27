@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, <>
+ * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
  */
 
 #include "load_balancer.h"
@@ -42,5 +42,3 @@ void free_load_balancer(load_balancer** main) {
 
     *main = NULL;
 }
-
-
