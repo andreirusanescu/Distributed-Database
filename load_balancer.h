@@ -15,10 +15,20 @@ typedef struct load_balancer {
 
     /* TODO: remove test_server after testing
      *       the functionality for a single server */
-    server *test_server;
+    // server *test_server;
 
     /* TODO: add fields needed for a hashring with
              multiple servers */
+
+    /* array of the servers */
+    server **servers;
+    /* the number of the servers */
+    unsigned int size;
+    /* the capacity of the array of the servers,
+       useful for the resizable array of servers */
+    unsigned int capacity;
+    /* array in ascending order of IDs of the servers */
+    unsigned int *hashring;
 } load_balancer;
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
+ * Copyright (c) 2024, <>
  */
 
 #ifndef UTILS_H
