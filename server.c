@@ -8,7 +8,7 @@
 #include "lru_cache.h"
 #include "utils.h"
 
-static response
+response
 *server_edit_document(server *s, char *doc_name, char *doc_content) {
 	void *evicted_key = NULL;
 	response *res = (response *)calloc(1, sizeof(response));
@@ -72,7 +72,7 @@ res_fin:
 	return res;
 }
 
-static response
+response
 *server_get_document(server *s, char *doc_name) {
 	void *evicted_key = NULL;
 	bool fault = false;

@@ -10,17 +10,37 @@ load_balancer *init_load_balancer(bool enable_vnodes) {
 	// lb->test_server = NULL;
 	lb->size = 0;
 	lb->capacity = 1;
-	lb->hashring = (unsigned int *)malloc(sizeof(unsigned int));
+	lb->hashring = (unsigned int *)calloc(1, sizeof(unsigned int));
 	lb->servers = (server **)malloc(1 * sizeof(server *));
 	lb->hash_function_docs = hash_string;
 	lb->hash_function_servers = hash_uint;
 	return lb;
 }
 
-void swap_servers(server **a, server **b) {
-	server *aux = *a;
-	*a = *b;
-	*b = aux;
+void execute_queue(server *s) {
+	request *aux;
+	response *res;
+	while (s->queue->size) {
+		aux = (request *)q_front(s->queue);
+		res = server_edit_document(s, aux->doc_name, aux->doc_content);
+		PRINT_RESPONSE(res);
+		q_dequeue(s->queue);
+	}
+}
+
+unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
+	unsigned int left = 0, right = main->size, mid;
+
+	while (left < right) {
+		mid = left + (right - left) / 2;
+		
+		if (main->hashring[mid] > hash || (main->hashring[mid] == hash && main->servers[mid]->id > id)) {
+			right = mid;
+		} else {
+			left = mid + 1;
+		}
+	}
+	return left;
 }
 
 void loader_add_server(load_balancer* main, int server_id, int cache_size) {
@@ -48,11 +68,14 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 		if (!i)
 			hash = main->hash_function_servers(&sv->id);
 
-		pos = 0;
-		while (pos < main->size && main->hashring[pos] < hash)
-			++pos;
+		/* implement binary search */
+		// printf("%u ", hash);
+		
+		pos = find_pos(main, hash, server_id);
 
-		for (unsigned int j = main->size + 1; j >= pos + 1; --j) {
+		// printf("%u %u\n", pos, main->size);
+
+		for (unsigned int j = main->size; j >= pos + 1; --j) {
 			main->servers[j] = main->servers[j - 1];
 			main->hashring[j] = main->hashring[j - 1];
 		}
@@ -63,26 +86,50 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 
 	// tre sa verific daca tre mutate documente,
 	// daca au de executat task uri din cozi sa le execute
-	char *doc_name, *doc_content;
+	char *doc_name, *doc_content, *aux_string;
+	unsigned int name_len, content_len;
 	ll_node_t *elem;
+	bool execute;
 	for (unsigned int i = pos + 1; i < main->size; ++i) {
 		sv = main->servers[i];
 		
 		for (unsigned int j = 0; j < sv->data_base->hmax; ++j) {
 			elem = sv->data_base->buckets[j]->head;
 
+			execute = false;
 			while (elem) {
 				doc_name = ((info *)elem->data)->key;
 				hash = main->hash_function_docs(doc_name);
-				if (hash < main->hashring[pos]) {
 
+				// aici e ceva dubios
+				if ((pos > 0 && hash <= main->hashring[pos] && hash > main->hashring[pos - 1]) ||
+					(pos == 0 && main->size > 0 &&
+					 (hash <= main->hashring[pos] ||  hash > main->hashring[main->size - 1]))) {
 
+					// execut doar prima oara
+					if (execute == false) {
+						execute_queue(sv);
+						execute = true;
+					}
+					
+
+					aux_string = (char *)ht_get(sv->data_base, doc_name);
+
+					content_len = strlen(aux_string) + 1;
+					doc_content = (char *)malloc(content_len);
+					memcpy(doc_content, aux_string, content_len);
+
+					name_len = strlen(doc_name) + 1;
+					doc_name = (char *)malloc(name_len);
+					memcpy(doc_name, ((info *)elem->data)->key, name_len);
+
+					ht_remove_entry(sv->data_base, doc_name);
+					ht_put(main->servers[pos]->data_base, doc_name, name_len, doc_content, content_len);
 				}
-
+				elem = elem->next;
 			}
 		}
 	}
-
 }
 
 void loader_remove_server(load_balancer* main, int server_id) {

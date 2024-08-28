@@ -60,4 +60,10 @@ void free_server(server **s);
  */
 response *server_handle_request(server *s, request *req);
 
+response
+*server_edit_document(server *s, char *doc_name, char *doc_content);
+
+response
+*server_get_document(server *s, char *doc_name);
+
 #endif  /* SERVER_H */
