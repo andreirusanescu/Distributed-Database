@@ -213,8 +213,8 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 			if (((info*)elem->data)->value != value &&
 				strcmp(((info*)elem->data)->value, value)) {
 				free(((info*)elem->data)->value);
-				((info*)elem->data)->value = calloc(1, strlen(value) + 1);
-				memcpy(((info*)elem->data)->value, value, strlen(value) + 1);
+				((info*)elem->data)->value = calloc(1, value_size);
+				memcpy(((info*)elem->data)->value, value, value_size);
 			}
 
 			return;
