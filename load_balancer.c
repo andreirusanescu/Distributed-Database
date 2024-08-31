@@ -34,11 +34,10 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 	while (left < right) {
 		mid = left + (right - left) / 2;
 		
-		if (main->hashring[mid] > hash || (main->hashring[mid] == hash && main->servers[mid]->id > id)) {
+		if (main->hashring[mid] > hash || (main->hashring[mid] == hash && main->servers[mid]->id > id))
 			right = mid;
-		} else {
+		else
 			left = mid + 1;
-		}
 	}
 	return left;
 }
@@ -62,20 +61,19 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 	sv->id = server_id;
 
 	const unsigned int replicas = 1;
-	unsigned int hash, pos;
+	unsigned int hash, pos, i, j;
 	
-	for (unsigned int i = 0; i < replicas; ++i) {
-		if (!i)
-			hash = main->hash_function_servers(&sv->id);
+	for (i = 0; i < replicas; ++i) {
+		// if (!i)
+		hash = main->hash_function_servers(&sv->id);
 
 		/* implement binary search */
-		// printf("%u ", hash);
-		
+
 		pos = find_pos(main, hash, server_id);
 
-		// printf("%u %u\n", pos, main->size);
+		printf("%u %u\n", hash, pos);
 
-		for (unsigned int j = main->size; j >= pos + 1; --j) {
+		for (j = main->size; j >= pos + 1; --j) {
 			main->servers[j] = main->servers[j - 1];
 			main->hashring[j] = main->hashring[j - 1];
 		}
@@ -84,26 +82,23 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 		++main->size;
 	}
 
-	// tre sa verific daca tre mutate documente,
-	// daca au de executat task uri din cozi sa le execute
 	char *doc_name, *doc_content, *aux_string;
 	unsigned int name_len, content_len;
 	ll_node_t *elem;
 	bool execute;
-	for (unsigned int i = pos + 1; i < main->size; ++i) {
+	for (i = pos + 1; i < main->size; ++i) {
 		sv = main->servers[i];
 		
-		for (unsigned int j = 0; j < sv->data_base->hmax; ++j) {
+		for (j = 0; j < sv->data_base->hmax; ++j) {
 			elem = sv->data_base->buckets[j]->head;
 
 			execute = false;
 			while (elem) {
+
 				doc_name = ((info *)elem->data)->key;
 				hash = main->hash_function_docs(doc_name);
-
-				// aici e ceva dubios
 				if ((pos > 0 && hash <= main->hashring[pos] && hash > main->hashring[pos - 1]) ||
-					(pos == 0 && main->size > 0 &&
+					(pos == 0 &&
 					 (hash <= main->hashring[pos] ||  hash > main->hashring[main->size - 1]))) {
 
 					// execut doar prima oara
@@ -124,6 +119,7 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 					memcpy(doc_name, ((info *)elem->data)->key, name_len);
 
 					ht_remove_entry(sv->data_base, doc_name);
+					lru_cache_remove(sv->cache, doc_name);
 					ht_put(main->servers[pos]->data_base, doc_name, name_len, doc_content, content_len);
 				}
 				elem = elem->next;
@@ -137,12 +133,11 @@ void loader_remove_server(load_balancer* main, int server_id) {
 }
 
 response *loader_forward_request(load_balancer* main, request *req) {
-	if (!main || !req) return NULL;
-
 	server *sv;
 	unsigned int hash_val = main->hash_function_docs(req->doc_name);
 	unsigned int sv_index = hash_val % main->size;
 	sv = main->servers[sv_index];
+	printf("%u %u\n", sv_index, sv->id);
 	// sv = main->test_server;
 	response *res = server_handle_request(sv, req);
 	return res;

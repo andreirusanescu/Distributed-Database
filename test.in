@@ -8,3 +8,5 @@ EDIT "5a51719f5ec" "Router"
 EDIT "2fe5f9f583" "Laptop"
 GET "c674390f9"
 GET "2fe5f9f583"
+REMOVE_SERVER 2
+GET "2fe5f9f583"
