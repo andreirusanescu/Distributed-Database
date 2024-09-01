@@ -239,16 +239,20 @@ void ht_remove_entry(hashtable_t *ht, void *key)
 	for (int i = 0; elem; i++) {
 		if (ht->compare_function(((info *)(elem->data))->key, key) == 0) {
 			ll_node_t *aux = ll_remove_nth_node(ht->buckets[index], i);
-			if (ht->copy_func == simple_copy) {
-				free(((info *)aux->data)->value);
-				((info *)aux->data)->value = NULL;
+			if (aux) {
+				if (aux->data) {
+					if (ht->copy_func == simple_copy) {
+						free(((info *)aux->data)->value);
+						((info *)aux->data)->value = NULL;
+					}
+					free(((info *)aux->data)->key);
+					((info *)aux->data)->key = NULL;
+					free(aux->data);
+					aux->data = NULL;
+				}
+				free(aux);
+				aux = NULL;
 			}
-			free(((info *)aux->data)->key);
-			((info *)aux->data)->key = NULL;
-			free(aux->data);
-			aux->data = NULL;
-			free(aux);
-			aux = NULL;
 			return;
 		}
 		elem = elem->next;
@@ -260,9 +264,9 @@ void ht_free(hashtable_t *ht)
 	for (unsigned int i = 0; i < ht->hmax; ++i) {
 		ll_node_t* elem = ht->buckets[i]->head;
 		while (elem) {
-			if (elem->data) {
-				ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);
-				if (aux && aux->data) {
+			ll_node_t *aux = ll_remove_nth_node(ht->buckets[i], 0);
+			if (aux) {
+				if (aux->data) {
 					if (ht->copy_func == simple_copy) {
 						free(((info *)aux->data)->value);
 						((info *)aux->data)->value = NULL;
@@ -271,9 +275,9 @@ void ht_free(hashtable_t *ht)
 					((info *)aux->data)->key = NULL;
 					free(aux->data);
 					aux->data = NULL;
-					free(aux);
-					aux = NULL;
 				}
+				free(aux);
+				aux = NULL;
 			}
 			elem = ht->buckets[i]->head;
 		}

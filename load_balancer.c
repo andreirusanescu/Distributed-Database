@@ -17,6 +17,7 @@ load_balancer *init_load_balancer(bool enable_vnodes) {
 	return lb;
 }
 
+static
 void execute_queue(server *s) {
 	request *aux;
 	response *res;
@@ -42,6 +43,21 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 			left = mid + 1;
 	}
 	return left;
+}
+
+static
+unsigned int bisearch(unsigned int *h, unsigned int l, unsigned int r, unsigned int x) {
+	unsigned int m;
+	while (l < r) {
+		m = l + (r - l) / 2;
+		if (h[m] == x)
+			return m;
+		else if (h[m] > x)
+			r = m;
+		else
+			l = m + 1;
+	}
+	return l;
 }
 
 void loader_add_server(load_balancer* main, int server_id, int cache_size) {
@@ -127,22 +143,57 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 }
 
 void loader_remove_server(load_balancer* main, int server_id) {
-	/* TODO */
-}
+	ll_node_t *elem, *tmp;
+	server *rm;
+	const unsigned int replicas = 1;
+	unsigned int hash, pos, i, j, content_len, name_len;
+	char *doc_name, *doc_content, *aux_string;
+	for (i = 0; i < replicas; ++i) {
+		hash = main->hash_function_servers(&server_id);
+		// pos = find_pos(main, hash, server_id);
+		pos = bisearch(main->hashring, 0, main->size - 1, hash);
+		rm = main->servers[pos];
+		for (j = pos; j < main->size - 1; ++j) {
+			main->servers[j] = main->servers[j + 1];
+			main->hashring[j] = main->hashring[j + 1];
+		}
+		--main->size;
 
-static
-unsigned int bisearch(unsigned int *h, unsigned int l, unsigned int r, unsigned int x) {
-	unsigned int m;
-	while (l < r) {
-		m = l + (r - l) / 2;
-		if (h[m] == x)
-			return m;
-		else if (h[m] > x)
-			r = m;
-		else
-			l = m + 1;
+		/* removed server is on the last position
+		   all of its documents go to the first server */
+
+		if (pos == main->size && main->size) {
+			pos = 0;
+		}
+
+		execute_queue(rm);
+		for (j = 0; j < rm->data_base->hmax; ++j) {
+			elem = rm->data_base->buckets[j]->head;
+			while (elem) {
+				tmp = elem->next;
+				if (elem->data) {
+					doc_name = ((info *)elem->data)->key;
+					aux_string = (char *)ht_get(rm->data_base, doc_name);
+
+					content_len = strlen(aux_string) + 1;
+					doc_content = (char *)malloc(content_len);
+					memcpy(doc_content, aux_string, content_len);
+
+					name_len = strlen(doc_name) + 1;
+					doc_name = (char *)malloc(name_len);
+					memcpy(doc_name, ((info *)elem->data)->key, name_len);
+
+					ht_remove_entry(rm->data_base, doc_name);
+					lru_cache_remove(rm->cache, doc_name);
+					ht_put(main->servers[pos]->data_base, doc_name, name_len, doc_content, content_len);
+					free(doc_content);
+					free(doc_name);
+				}
+				elem = tmp;
+			}
+		}
+		free_server(&rm);
 	}
-	return l;
 }
 
 response *loader_forward_request(load_balancer* main, request *req) {
