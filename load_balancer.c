@@ -28,13 +28,15 @@ void execute_queue(server *s) {
 	}
 }
 
+static
 unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 	unsigned int left = 0, right = main->size, mid;
 
 	while (left < right) {
 		mid = left + (right - left) / 2;
 		
-		if (main->hashring[mid] > hash || (main->hashring[mid] == hash && main->servers[mid]->id > id))
+		if (main->hashring[mid] > hash ||
+			(main->hashring[mid] == hash && main->servers[mid]->id > id))
 			right = mid;
 		else
 			left = mid + 1;
@@ -67,11 +69,8 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 		// if (!i)
 		hash = main->hash_function_servers(&sv->id);
 
-		/* implement binary search */
-
+		/* binary search */
 		pos = find_pos(main, hash, server_id);
-
-		printf("%u %u\n", hash, pos);
 
 		for (j = main->size; j >= pos + 1; --j) {
 			main->servers[j] = main->servers[j - 1];
@@ -106,7 +105,6 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 						execute_queue(sv);
 						execute = true;
 					}
-					
 
 					aux_string = (char *)ht_get(sv->data_base, doc_name);
 
@@ -132,13 +130,32 @@ void loader_remove_server(load_balancer* main, int server_id) {
 	/* TODO */
 }
 
+static
+unsigned int bisearch(unsigned int *h, unsigned int l, unsigned int r, unsigned int x) {
+	unsigned int m;
+	while (l < r) {
+		m = l + (r - l) / 2;
+		if (h[m] == x)
+			return m;
+		else if (h[m] > x)
+			r = m;
+		else
+			l = m + 1;
+	}
+	return l;
+}
+
 response *loader_forward_request(load_balancer* main, request *req) {
 	server *sv;
 	unsigned int hash_val = main->hash_function_docs(req->doc_name);
-	unsigned int sv_index = hash_val % main->size;
+	unsigned int sv_index;
+
+	if (main->hashring[main->size - 1] < hash_val)
+		sv_index = 0;
+	else
+		sv_index = bisearch(main->hashring, 0, main->size - 1, hash_val);
 	sv = main->servers[sv_index];
-	printf("%u %u\n", sv_index, sv->id);
-	// sv = main->test_server;
+	// sv = main->test_server
 	response *res = server_handle_request(sv, req);
 	return res;
 }
