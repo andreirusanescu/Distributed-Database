@@ -35,7 +35,6 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 
 	while (left < right) {
 		mid = left + (right - left) / 2;
-		
 		if (main->hashring[mid] > hash ||
 			(main->hashring[mid] == hash && main->servers[mid]->id > id))
 			right = mid;
@@ -46,7 +45,8 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 }
 
 static
-unsigned int bisearch(unsigned int *h, unsigned int l, unsigned int r, unsigned int x) {
+unsigned int bisearch(unsigned int *h, unsigned int l, 
+					  unsigned int r, unsigned int x) {
 	unsigned int m;
 	while (l < r) {
 		m = l + (r - l) / 2;
@@ -80,7 +80,7 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 
 	const unsigned int replicas = 1;
 	unsigned int hash, pos, i, j;
-	
+
 	for (i = 0; i < replicas; ++i) {
 		// if (!i)
 		hash = main->hash_function_servers(&sv->id);
@@ -99,23 +99,22 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 
 	char *doc_name, *doc_content, *aux_string;
 	unsigned int name_len, content_len;
-	ll_node_t *elem;
+	ll_node_t *elem, *tmp;
 	bool execute;
 	for (i = pos + 1; i < main->size; ++i) {
 		sv = main->servers[i];
-		
+
 		for (j = 0; j < sv->data_base->hmax; ++j) {
 			elem = sv->data_base->buckets[j]->head;
 
 			execute = false;
 			while (elem) {
-
+				tmp = elem->next;
 				doc_name = ((info *)elem->data)->key;
 				hash = main->hash_function_docs(doc_name);
 				if ((pos > 0 && hash <= main->hashring[pos] && hash > main->hashring[pos - 1]) ||
 					(pos == 0 &&
 					 (hash <= main->hashring[pos] ||  hash > main->hashring[main->size - 1]))) {
-
 					// execut doar prima oara
 					if (execute == false) {
 						execute_queue(sv);
@@ -134,9 +133,12 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 
 					ht_remove_entry(sv->data_base, doc_name);
 					lru_cache_remove(sv->cache, doc_name);
-					ht_put(main->servers[pos]->data_base, doc_name, name_len, doc_content, content_len);
+					ht_put(main->servers[pos]->data_base, doc_name, name_len,
+						   doc_content, content_len);
+					free(doc_content);
+					free(doc_name);
 				}
-				elem = elem->next;
+				elem = tmp;
 			}
 		}
 	}
@@ -185,7 +187,8 @@ void loader_remove_server(load_balancer* main, int server_id) {
 
 					ht_remove_entry(rm->data_base, doc_name);
 					lru_cache_remove(rm->cache, doc_name);
-					ht_put(main->servers[pos]->data_base, doc_name, name_len, doc_content, content_len);
+					ht_put(main->servers[pos]->data_base, doc_name, name_len,
+						   doc_content, content_len);
 					free(doc_content);
 					free(doc_name);
 				}

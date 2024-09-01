@@ -141,7 +141,7 @@ void lru_cache_remove(lru_cache *cache, void *key) {
 		elem->next->prev = elem->prev;
 	else
 		cache->tail = elem->prev;
-	cache->size--;
+	--cache->size;
 	/* frees pair elem->data */
 	key_val_free_function(elem->data);
 	ht_remove_entry(cache->map_string_to_node, key);
