@@ -41,7 +41,6 @@ response
 	lru_cache_put(s->cache, doc_name, doc_content, &evicted_key);
 	ht_put(s->data_base, doc_name, strlen(doc_name) + 1,
 		   doc_content, strlen(doc_content) + 1);
-
 	if (evicted_key) {
 		// adding evicted key to memory
 		sprintf(sv_log, LOG_EVICT, doc_name,

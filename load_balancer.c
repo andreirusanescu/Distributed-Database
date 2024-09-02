@@ -45,7 +45,7 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 }
 
 static
-unsigned int bisearch(unsigned int *h, unsigned int l, 
+unsigned int bisearch(unsigned int *h, unsigned int l,
 					  unsigned int r, unsigned int x) {
 	unsigned int m;
 	while (l < r) {
@@ -101,26 +101,32 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 	unsigned int name_len, content_len;
 	ll_node_t *elem, *tmp;
 	bool execute;
-	for (i = pos + 1; i < main->size; ++i) {
-		sv = main->servers[i];
 
+	// daca serverul adaugat este pe ultima pozitie,
+	// ia documente de la serverul 0?
+
+	for (i = pos + 1; i < main->size; ++i) {
+		execute = false;
+servers:
+		sv = main->servers[i];
 		for (j = 0; j < sv->data_base->hmax; ++j) {
 			elem = sv->data_base->buckets[j]->head;
 
-			execute = false;
 			while (elem) {
 				tmp = elem->next;
 				doc_name = ((info *)elem->data)->key;
 				hash = main->hash_function_docs(doc_name);
-				if ((pos > 0 && hash <= main->hashring[pos] && hash > main->hashring[pos - 1]) ||
+
+				if ((pos > 0 && hash <= main->hashring[pos] &&
+					 hash > main->hashring[pos - 1]) ||
 					(pos == 0 &&
-					 (hash <= main->hashring[pos] ||  hash > main->hashring[main->size - 1]))) {
+					 (hash <= main->hashring[pos] ||
+					  hash > main->hashring[main->size - 1]))) {
 					// execut doar prima oara
 					if (execute == false) {
 						execute_queue(sv);
 						execute = true;
 					}
-
 					aux_string = (char *)ht_get(sv->data_base, doc_name);
 
 					content_len = strlen(aux_string) + 1;
@@ -141,6 +147,45 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 				elem = tmp;
 			}
 		}
+		if (!execute && sv->queue->size) {
+			request *req = sv->queue->buff[sv->queue->read_idx];
+			unsigned int k = sv->queue->read_idx;
+			while (k != sv->queue->write_idx) {
+				req = sv->queue->buff[k];
+				if (req) {
+					name_len = strlen(req->doc_name) + 1;
+					doc_name = malloc(name_len);
+					memcpy(doc_name, req->doc_name, name_len);
+					hash = main->hash_function_docs(doc_name);
+
+					if ((pos > 0 && hash <= main->hashring[pos] &&
+						 hash > main->hashring[pos - 1]) ||
+						(pos == 0 &&
+						 (hash <= main->hashring[pos] ||
+						  hash > main->hashring[main->size - 1]))) {
+						// execut doar prima oara
+						execute_queue(sv);
+						execute = true;
+						aux_string = (char *)ht_get(sv->data_base, doc_name);
+						content_len = strlen(aux_string) + 1;
+						doc_content = (char *)malloc(content_len);
+						memcpy(doc_content, aux_string, content_len);
+
+						ht_remove_entry(sv->data_base, doc_name);
+						lru_cache_remove(sv->cache, doc_name);
+						ht_put(main->servers[pos]->data_base, doc_name, name_len,
+							doc_content, content_len);
+						free(doc_content);
+						free(doc_name);
+						doc_name = NULL;
+						goto servers;
+					}
+					free(doc_name);
+					doc_name = NULL;
+				}
+				k = (k + 1) % sv->queue->max_size;
+			}
+		}
 	}
 }
 
@@ -152,7 +197,6 @@ void loader_remove_server(load_balancer* main, int server_id) {
 	char *doc_name, *doc_content, *aux_string;
 	for (i = 0; i < replicas; ++i) {
 		hash = main->hash_function_servers(&server_id);
-		// pos = find_pos(main, hash, server_id);
 		pos = bisearch(main->hashring, 0, main->size - 1, hash);
 		rm = main->servers[pos];
 		for (j = pos; j < main->size - 1; ++j) {
@@ -161,7 +205,7 @@ void loader_remove_server(load_balancer* main, int server_id) {
 		}
 		--main->size;
 
-		/* removed server is on the last position
+		/* removed server is on the last position,
 		   all of its documents go to the first server */
 
 		if (pos == main->size && main->size) {
@@ -209,7 +253,8 @@ response *loader_forward_request(load_balancer* main, request *req) {
 	else
 		sv_index = bisearch(main->hashring, 0, main->size - 1, hash_val);
 	sv = main->servers[sv_index];
-	// sv = main->test_server
+
+	// sv = main->test_server;
 	response *res = server_handle_request(sv, req);
 	return res;
 }
