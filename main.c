@@ -128,6 +128,7 @@ void apply_requests(FILE  *input_file, char *buffer,
 
 int main(int argc, char **argv) {
 	FILE *input;
+	// stdout = fopen("test.out", "wt");
 	int requests_num;
 	bool enable_vnodes;
 

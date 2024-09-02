@@ -14,6 +14,7 @@ load_balancer *init_load_balancer(bool enable_vnodes) {
 	lb->servers = (server **)malloc(1 * sizeof(server *));
 	lb->hash_function_docs = hash_string;
 	lb->hash_function_servers = hash_uint;
+	(void)enable_vnodes;
 	return lb;
 }
 
@@ -36,7 +37,8 @@ unsigned int find_pos(load_balancer *main, unsigned int hash, unsigned int id) {
 	while (left < right) {
 		mid = left + (right - left) / 2;
 		if (main->hashring[mid] > hash ||
-			(main->hashring[mid] == hash && main->servers[mid]->id > id))
+			(main->hashring[mid] == hash &&
+			 (unsigned int)main->servers[mid]->id > id))
 			right = mid;
 		else
 			left = mid + 1;
@@ -100,91 +102,45 @@ void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 	char *doc_name, *doc_content, *aux_string;
 	unsigned int name_len, content_len;
 	ll_node_t *elem, *tmp;
-	bool execute;
 
-	// daca serverul adaugat este pe ultima pozitie,
-	// ia documente de la serverul 0?
+	if (pos + 1 < main->size) {
+		sv = main->servers[pos + 1];
+		execute_queue(main->servers[pos + 1]);
+	} else {
+		sv = main->servers[0];
+		execute_queue(main->servers[0]);
+	}
 
-	for (i = pos + 1; i < main->size; ++i) {
-		execute = false;
-servers:
-		sv = main->servers[i];
-		for (j = 0; j < sv->data_base->hmax; ++j) {
-			elem = sv->data_base->buckets[j]->head;
+	for (i = 0; i < sv->data_base->hmax; ++i) {
+		elem = sv->data_base->buckets[i]->head;
+		while (elem) {
+			tmp = elem->next;
 
-			while (elem) {
-				tmp = elem->next;
-				doc_name = ((info *)elem->data)->key;
-				hash = main->hash_function_docs(doc_name);
+			doc_name = ((info *)elem->data)->key;
+			hash = main->hash_function_docs(doc_name);
+			if ((pos > 0 && hash <= main->hashring[pos] &&
+					hash > main->hashring[pos - 1]) ||
+				(pos == 0 &&
+					(hash <= main->hashring[pos] ||
+					hash > main->hashring[main->size - 1]))) {
+				aux_string = (char *)ht_get(sv->data_base, doc_name);
 
-				if ((pos > 0 && hash <= main->hashring[pos] &&
-					 hash > main->hashring[pos - 1]) ||
-					(pos == 0 &&
-					 (hash <= main->hashring[pos] ||
-					  hash > main->hashring[main->size - 1]))) {
-					// execut doar prima oara
-					if (execute == false) {
-						execute_queue(sv);
-						execute = true;
-					}
-					aux_string = (char *)ht_get(sv->data_base, doc_name);
+				content_len = strlen(aux_string) + 1;
+				doc_content = (char *)malloc(content_len);
+				memcpy(doc_content, aux_string, content_len);
 
-					content_len = strlen(aux_string) + 1;
-					doc_content = (char *)malloc(content_len);
-					memcpy(doc_content, aux_string, content_len);
+				name_len = strlen(doc_name) + 1;
+				doc_name = (char *)malloc(name_len);
+				memcpy(doc_name, ((info *)elem->data)->key, name_len);
 
-					name_len = strlen(doc_name) + 1;
-					doc_name = (char *)malloc(name_len);
-					memcpy(doc_name, ((info *)elem->data)->key, name_len);
-
-					ht_remove_entry(sv->data_base, doc_name);
-					lru_cache_remove(sv->cache, doc_name);
-					ht_put(main->servers[pos]->data_base, doc_name, name_len,
-						   doc_content, content_len);
-					free(doc_content);
-					free(doc_name);
-				}
-				elem = tmp;
+				ht_remove_entry(sv->data_base, doc_name);
+				lru_cache_remove(sv->cache, doc_name);
+				ht_put(main->servers[pos]->data_base, doc_name, name_len,
+						doc_content, content_len);
+				free(doc_content);
+				free(doc_name);
 			}
-		}
-		if (!execute && sv->queue->size) {
-			request *req = sv->queue->buff[sv->queue->read_idx];
-			unsigned int k = sv->queue->read_idx;
-			while (k != sv->queue->write_idx) {
-				req = sv->queue->buff[k];
-				if (req) {
-					name_len = strlen(req->doc_name) + 1;
-					doc_name = malloc(name_len);
-					memcpy(doc_name, req->doc_name, name_len);
-					hash = main->hash_function_docs(doc_name);
-
-					if ((pos > 0 && hash <= main->hashring[pos] &&
-						 hash > main->hashring[pos - 1]) ||
-						(pos == 0 &&
-						 (hash <= main->hashring[pos] ||
-						  hash > main->hashring[main->size - 1]))) {
-						// execut doar prima oara
-						execute_queue(sv);
-						execute = true;
-						aux_string = (char *)ht_get(sv->data_base, doc_name);
-						content_len = strlen(aux_string) + 1;
-						doc_content = (char *)malloc(content_len);
-						memcpy(doc_content, aux_string, content_len);
-
-						ht_remove_entry(sv->data_base, doc_name);
-						lru_cache_remove(sv->cache, doc_name);
-						ht_put(main->servers[pos]->data_base, doc_name, name_len,
-							doc_content, content_len);
-						free(doc_content);
-						free(doc_name);
-						doc_name = NULL;
-						goto servers;
-					}
-					free(doc_name);
-					doc_name = NULL;
-				}
-				k = (k + 1) % sv->queue->max_size;
-			}
+			elem = tmp;
 		}
 	}
 }
