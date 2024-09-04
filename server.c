@@ -63,11 +63,11 @@ response
 	}
 
 res_fin:
-	log_length = strlen(sv_log), res_length = strlen(sv_res);
-	res->server_log = (char *)calloc((log_length + 1), sizeof(char));
-	res->server_response = (char *)calloc((res_length + 1), sizeof(char));
-	memcpy(res->server_log, sv_log, log_length + 1);
-	memcpy(res->server_response, sv_res, res_length + 1);
+	log_length = strlen(sv_log) + 1, res_length = strlen(sv_res) + 1;
+	res->server_log = (char *)calloc(log_length, sizeof(char));
+	res->server_response = (char *)calloc(res_length, sizeof(char));
+	memcpy(res->server_log, sv_log, log_length);
+	memcpy(res->server_response, sv_res, res_length);
 
 	return res;
 }
@@ -77,7 +77,6 @@ response
 	void *evicted_key = NULL;
 	bool fault = false;
 	response *res = (response *)calloc(1, sizeof(response));
-	// res->server_id = s->id;
 	res->server_id = id;
 
 	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
@@ -117,14 +116,14 @@ response
 	}
 
 res_fin2:
-	log_length = strlen(sv_log);
-	res->server_log = (char *)calloc((log_length + 1), sizeof(char));
-	memcpy(res->server_log, sv_log, log_length + 1);
+	log_length = strlen(sv_log) + 1;
+	res->server_log = (char *)calloc(log_length, sizeof(char));
+	memcpy(res->server_log, sv_log, log_length);
 
 	if (!fault) {
-		res_length = strlen(sv_res);
-		res->server_response = (char *)calloc((res_length + 1), sizeof(char));
-		memcpy(res->server_response, sv_res, res_length + 1);
+		res_length = strlen(sv_res) + 1;
+		res->server_response = (char *)calloc(res_length, sizeof(char));
+		memcpy(res->server_response, sv_res, res_length);
 	}
 
 	return res;
@@ -145,7 +144,6 @@ response *server_handle_request(server *s, request *req, unsigned int id) {
 	if (req->type == EDIT_DOCUMENT) {
 		q_enqueue(s->queue, req);
 		res = (response *)calloc(1, sizeof(response));
-		// res->server_id = s->id;
 		res->server_id = id;
 		char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 

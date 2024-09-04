@@ -140,7 +140,6 @@ int main(int argc, char **argv) {
 	}
 
 	input = fopen(argv[1], "rt");
-	// input = fopen("test.in", "rt");
 	DIE(input == NULL, "missing input file");
 
 	DIE(fgets(buffer, REQUEST_LENGTH + 1, input) == 0, "empty input file");
