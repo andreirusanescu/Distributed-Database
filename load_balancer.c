@@ -255,14 +255,14 @@ void free_load_balancer(load_balancer** main) {
 			if ((*main)->servers[k]) {
 				fr = (*main)->servers[k];
 				server_id = fr->id;
-				 for (int i = 0; i < 3; ++i) {
-                    tag = i * 100000 + server_id;
-                    hash = (*main)->hash_function_servers(&tag);
-                    pos = find_pos((*main), hash, server_id);
+				for (int i = 0; i < 3; ++i) {
+					tag = i * 100000 + server_id;
+					hash = (*main)->hash_function_servers(&tag);
+					pos = bisearch((*main)->hashring, 0, (*main)->size - 1, hash);
 
-                    if ((*main)->servers[pos] == fr)
-                        (*main)->servers[pos] = NULL;
-                }
+					if ((*main)->servers[pos])
+						(*main)->servers[pos] = NULL;
+				}
 				free_server(&fr);
 			}
 		}
