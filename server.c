@@ -9,10 +9,11 @@
 #include "utils.h"
 
 response
-*server_edit_document(server *s, char *doc_name, char *doc_content) {
+*server_edit_document(server *s, char *doc_name,
+					  char *doc_content, unsigned int id) {
 	void *evicted_key = NULL;
 	response *res = (response *)calloc(1, sizeof(response));
-	res->server_id = s->id;
+	res->server_id = id;
 	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 	int log_length, res_length;
 
@@ -72,11 +73,12 @@ res_fin:
 }
 
 response
-*server_get_document(server *s, char *doc_name) {
+*server_get_document(server *s, char *doc_name, unsigned int id) {
 	void *evicted_key = NULL;
 	bool fault = false;
 	response *res = (response *)calloc(1, sizeof(response));
-	res->server_id = s->id;
+	// res->server_id = s->id;
+	res->server_id = id;
 
 	char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 	int log_length, res_length;
@@ -137,13 +139,14 @@ server *init_server(unsigned int cache_size) {
 	return sv;
 }
 
-response *server_handle_request(server *s, request *req) {
+response *server_handle_request(server *s, request *req, unsigned int id) {
 	response *res;
 
 	if (req->type == EDIT_DOCUMENT) {
 		q_enqueue(s->queue, req);
 		res = (response *)calloc(1, sizeof(response));
-		res->server_id = s->id;
+		// res->server_id = s->id;
+		res->server_id = id;
 		char sv_log[MAX_LOG_LENGTH], sv_res[MAX_RESPONSE_LENGTH];
 
 		sprintf(sv_log, LOG_LAZY_EXEC, s->queue->size);
@@ -161,11 +164,11 @@ response *server_handle_request(server *s, request *req) {
 		request *aux;
 		while (s->queue->size) {
 			aux = (request *)q_front(s->queue);
-			res = server_edit_document(s, aux->doc_name, aux->doc_content);
+			res = server_edit_document(s, aux->doc_name, aux->doc_content, id);
 			PRINT_RESPONSE(res);
 			q_dequeue(s->queue);
 		}
-		res = server_get_document(s, req->doc_name);
+		res = server_get_document(s, req->doc_name, id);
 		return res;
 	}
 

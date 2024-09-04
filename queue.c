@@ -77,4 +77,5 @@ void q_free(queue_t *q) {
 	q_clear(q);
 	free(q->buff);
 	free(q);
+	q = NULL;
 }

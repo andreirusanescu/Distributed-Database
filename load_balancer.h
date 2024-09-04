@@ -29,6 +29,8 @@ typedef struct load_balancer {
     unsigned int capacity;
     /* array in ascending order of IDs of the servers */
     unsigned int *hashring;
+    /* value if virtual nodes are enabled */
+    bool vnodes;
 } load_balancer;
 
 

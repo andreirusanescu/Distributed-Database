@@ -128,7 +128,7 @@ void apply_requests(FILE  *input_file, char *buffer,
 
 int main(int argc, char **argv) {
 	FILE *input;
-	// stdout = fopen("test.out", "wt");
+
 	int requests_num;
 	bool enable_vnodes;
 
@@ -140,6 +140,7 @@ int main(int argc, char **argv) {
 	}
 
 	input = fopen(argv[1], "rt");
+	// input = fopen("test.in", "rt");
 	DIE(input == NULL, "missing input file");
 
 	DIE(fgets(buffer, REQUEST_LENGTH + 1, input) == 0, "empty input file");

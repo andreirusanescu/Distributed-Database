@@ -15,22 +15,23 @@
 #define MAX_RESPONSE_LENGTH     4096
 
 typedef struct server {
-    lru_cache *cache;
-    queue_t *queue;
-    hashtable_t *data_base;
-    int id;
+	lru_cache *cache;
+	queue_t *queue;
+	hashtable_t *data_base;
+	int id;
+	unsigned int repid_to_hash[3];
 } server;
 
 typedef struct request {
-    request_type type;
-    char *doc_name;
-    char *doc_content;
+	request_type type;
+	char *doc_name;
+	char *doc_content;
 } request;
 
 typedef struct response {
-    char *server_log;
-    char *server_response;
-    int server_id;
+	char *server_log;
+	char *server_response;
+	int server_id;
 } response;
 
 
@@ -58,12 +59,14 @@ void free_server(server **s);
  *     this case, after executing each task, PRINT_RESPONSE should
  *     be called).
  */
-response *server_handle_request(server *s, request *req);
+response
+*server_handle_request(server *s, request *req, unsigned int id);
 
 response
-*server_edit_document(server *s, char *doc_name, char *doc_content);
+*server_edit_document(server *s, char *doc_name,
+					  char *doc_content, unsigned int id);
 
 response
-*server_get_document(server *s, char *doc_name);
+*server_get_document(server *s, char *doc_name, unsigned int id);
 
 #endif  /* SERVER_H */

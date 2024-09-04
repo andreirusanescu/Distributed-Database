@@ -285,6 +285,7 @@ void ht_free(hashtable_t *ht)
 	}
 	free(ht->buckets);
 	free(ht);
+	ht = NULL;
 }
 
 unsigned int ht_get_size(hashtable_t *ht)
