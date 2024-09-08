@@ -10,7 +10,7 @@
 
 lru_cache *init_lru_cache(unsigned int cache_capacity) {
 	lru_cache *lru = (lru_cache *)calloc(1, sizeof(lru_cache));
-	DIE(!lru, "malloc() failed");
+	DIE(!lru, "calloc() failed");
 	lru->capacity = cache_capacity;
 	lru->map_string_to_node = ht_create(HMAX, hash_string,
 										compare_function_strings,
@@ -50,7 +50,7 @@ bool lru_cache_put(lru_cache *cache, void *key, void *value,
 		/* update */
 		free(((info *)elem->data)->value);
 		int len = strlen(value) + 1;
-		((info *)elem->data)->value = calloc(1, len);
+		((info *)elem->data)->value = malloc(1 * len);
 		memcpy(((info *)elem->data)->value, value, len);
 
 		/* bring forward */

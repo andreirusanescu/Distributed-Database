@@ -13,7 +13,6 @@
 linked_list_t*
 ll_create(unsigned int data_size)
 {
-	/* TODO */
 	linked_list_t *list = (linked_list_t *)malloc(sizeof(linked_list_t));
 	DIE(!list, "malloc() failed");
 	list->head = NULL;
@@ -50,7 +49,6 @@ void ll_add_nth_node(linked_list_t* list, unsigned int n, void* new_data)
 ll_node_t* ll_remove_nth_node(linked_list_t* list, unsigned int n)
 {
 	if (n == 0 && list->head != NULL) {
-		// trebuie eliminat headul;
 		ll_node_t *p = list->head;
 		list->head = list->head->next;
 		list->size--;
@@ -198,7 +196,7 @@ void node_copy(void **dst, void *src, unsigned int src_size) {
 }
 
 void simple_copy(void **dst, void *src, unsigned int src_size) {
-	*dst = calloc(1, src_size);
+	*dst = malloc(1 * src_size);
 	memcpy((*dst), src, src_size);
 }
 
@@ -223,7 +221,7 @@ void ht_put(hashtable_t *ht, void *key, unsigned int key_size,
 	}
 	info *data = (info *)calloc(1, sizeof(info));
 	DIE(!data, "malloc() failed");
-	data->key = calloc(1, key_size);
+	data->key = malloc(1 * key_size);
 	memcpy(data->key, key, key_size);
 	ht->copy_func(&data->value, value, value_size);
 	ht->size++;

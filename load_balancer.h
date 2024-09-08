@@ -13,13 +13,6 @@ typedef struct load_balancer {
     unsigned int (*hash_function_servers)(void *);
     unsigned int (*hash_function_docs)(void *);
 
-    /* TODO: remove test_server after testing
-     *       the functionality for a single server */
-    // server *test_server;
-
-    /* TODO: add fields needed for a hashring with
-             multiple servers */
-
     /* array of the servers */
     server **servers;
     /* the number of the servers */

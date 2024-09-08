@@ -11,24 +11,12 @@ load_balancer *init_load_balancer(bool enable_vnodes) {
 	unsigned int sz = (enable_vnodes == true ? 3 : 1);
 	lb->size = 0;
 	lb->capacity = sz;
-	lb->hashring = (unsigned int *)calloc(sz, sizeof(unsigned int));
+	lb->hashring = (unsigned int *)malloc(sz * sizeof(unsigned int));
 	lb->servers = (server **)malloc(sz * sizeof(server *));
 	lb->hash_function_docs = hash_string;
 	lb->hash_function_servers = hash_uint;
 	lb->vnodes = enable_vnodes;
 	return lb;
-}
-
-/* Executes the requests for the server `s` with id `id` */
-static void execute_queue(server *s, unsigned int id) {
-	request *aux;
-	response *res;
-	while (s->queue->size) {
-		aux = (request *)q_front(s->queue);
-		res = server_edit_document(s, aux->doc_name, aux->doc_content, id);
-		PRINT_RESPONSE(res);
-		q_dequeue(s->queue);
-	}
 }
 
 /* Finds insert position for a server in the hashring
@@ -70,6 +58,7 @@ static unsigned int bisearch(unsigned int *h, unsigned int l,
 void loader_add_server(load_balancer* main, int server_id, int cache_size) {
 	if (main->size == main->capacity) {
 		main->capacity = main->capacity << 1;
+		if (main->capacity >= MAX_SERVERS) main->capacity = MAX_SERVERS;
 		main->servers = (server **)realloc(main->servers,
 										   main->capacity *
 										   sizeof(server *));

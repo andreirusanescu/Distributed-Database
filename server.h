@@ -19,6 +19,8 @@ typedef struct server {
 	queue_t *queue;
 	hashtable_t *data_base;
 	int id;
+	/* used when the load balancer uses replicas,
+	 * maps the index of the replica to its hash */
 	unsigned int repid_to_hash[3];
 } server;
 
@@ -62,11 +64,7 @@ void free_server(server **s);
 response
 *server_handle_request(server *s, request *req, unsigned int id);
 
-response
-*server_edit_document(server *s, char *doc_name,
-					  char *doc_content, unsigned int id);
-
-response
-*server_get_document(server *s, char *doc_name, unsigned int id);
+/* Executes the requests for the server `s` with id `id` */
+void execute_queue(server *s, unsigned int id);
 
 #endif  /* SERVER_H */

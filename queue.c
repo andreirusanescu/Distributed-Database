@@ -11,12 +11,12 @@
 
 queue_t *q_create(unsigned int data_size, unsigned int max_size) {
 	queue_t *queue = calloc(1, sizeof(queue_t));
-    DIE(!queue, "malloc() failed");
+    DIE(!queue, "calloc() failed");
 	queue->data_size = data_size;
 	queue->max_size = max_size;
 	queue->read_idx = 0;
 	queue->write_idx = 0;
-	queue->buff = calloc(max_size, data_size);
+	queue->buff = malloc(max_size * data_size);
 	return queue;
 }
 
@@ -51,9 +51,9 @@ void deep_copy(void **elem, void *data) {
 	request *src = (request *)data;
 	int content_len = strlen(src->doc_content);
 	int name_len = strlen(src->doc_name);
-	((request *)(*elem))->doc_content = (char *)calloc((content_len + 1),
+	((request *)(*elem))->doc_content = (char *)malloc((content_len + 1) *
 													   sizeof(char));
-	((request *)(*elem))->doc_name = (char *)calloc((name_len + 1), sizeof(char));
+	((request *)(*elem))->doc_name = (char *)malloc((name_len + 1) * sizeof(char));
 	memcpy(((request *)(*elem))->doc_content, src->doc_content, content_len + 1);
 	memcpy(((request *)(*elem))->doc_name, src->doc_name, name_len + 1);
 	((request *)(*elem))->type = ((request *)(data))->type;
@@ -62,7 +62,7 @@ void deep_copy(void **elem, void *data) {
 int q_enqueue(queue_t *q, void *new_data) {
 	if (q->size == q->max_size)
 		return 0;
-	q->buff[q->write_idx] = calloc(1, q->data_size);
+	q->buff[q->write_idx] = malloc(1 * q->data_size);
 	deep_copy(&q->buff[q->write_idx], new_data);
 	q->write_idx = (q->write_idx + 1) % q->max_size;
 	q->size++;
