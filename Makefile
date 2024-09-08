@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -g
+CFLAGS=-Wall -Wextra
 
 LOAD=load_balancer
 SERVER=server
@@ -16,7 +16,7 @@ QUEUE=queue
 build: tema2
 
 tema2: main.o $(LOAD).o $(SERVER).o $(CACHE).o $(UTILS).o $(HASH).o $(QUEUE).o # $(EXTRA).o
-	$(CC) -g $^ -o $@
+	$(CC) $^ -o $@
 
 main.o: main.c
 	$(CC) $(CFLAGS) $^ -c
