@@ -1,6 +1,5 @@
 # Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
 
-# Overview
 The objective of the program is to develop a distributed database that stores
 documents. With a view to optimizing the access to the frequently used documents,
 the caching system uses the LRU method (Least Recently Used). This mechanism has
