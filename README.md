@@ -1,4 +1,4 @@
-# Copyright (c) 2024, Andrei Rusanescu <andreirusanescu154gmail.com>
+# Copyright (c) 2024, Andrei Rusanescu
 
 The objective of the program is to develop a distributed database that stores
 documents. With a view to optimizing the access to the frequently used documents,
@@ -22,30 +22,30 @@ data that needs to be moved when the server configuration changes (i.e., when se
 are added or removed).
 
 Features of the Load Balancer:
-* Consistent Hashing: This mechanism maps both servers and documents to a hash ring.
+`Consistent Hashing`: This mechanism maps both servers and documents to a hash ring.
 Each server is assigned a position on the ring based on its hash value (hash on the
 id of the server). Documents are then placed on the server closest to their hash value
 in a clockwise direction on the ring. This approach ensures that adding or removing
 servers only affects the documents that need to be redistributed to maintain balance,
 reducing the impact on the overall system.
 
-* Minimal Disruption: When a new server is added, it only takes over the documents that
+`Minimal Disruption`: When a new server is added, it only takes over the documents that
 would have been assigned to its successor on the ring, minimizing the need for data
 movement. Similarly, when a server is removed, its documents are taken over by its
 successor. This property is crucial for maintaining system stability and performance
 during scaling operations.
 
-* Scalability: The system is designed to scale with minimal impact on the performance
+`Scalability`: The system is designed to scale with minimal impact on the performance
 of the existing servers. As the demand grows, additional servers can be seamlessly
 integrated without significant data reshuffling, allowing for efficient management of
 resources.
 
-* Fault Tolerance: The load balancer's consistent hashing mechanism inherently
+`Fault Tolerance`: The load balancer's consistent hashing mechanism inherently
 provides a degree of fault tolerance. In the event of a server failure, only
 the documents assigned to that server need to be redistributed to other servers,
 rather than a complete rebalancing of the entire dataset.
 
-* Operational Flow:
+`Operational Flow`:
 Request Handling: When a request to store or retrieve a document is received, the
 load balancer hashes the document's key (its name) and determines the appropriate
 server on the ring using the consistent hashing algorithm. The hashring is
@@ -55,7 +55,7 @@ on hash of the name use binary search for more rapid access. Both the servers
 array and the hash ring are implemented as resizable arrays to properly use
 memory.
 
-* Document Distribution: New documents are stored on the server that corresponds
+`Document Distribution`: New documents are stored on the server that corresponds
 to their hash value, ensuring even distribution and efficient use of server resources.
 In addition, say the system has multiple servers on the hashring but somehow all of
 the documents end up being stored on only one server, due to the hashing mechanism.
@@ -64,7 +64,7 @@ ensure a more even distribution of the documents, increasing the pool of hashes 
 server is responsible for. Each server can be represented by multiple points on the
 hash ring. All of the three replicas point to the same physical server.
 
-* Server Management: When changes to the server pool occur (i.e., addition or removal
+`Server Management`: When changes to the server pool occur (i.e., addition or removal
 of servers), the load balancer recalculates the positions on the hash ring and adjusts
 the distribution of documents accordingly. The adjustments are kept minimal to maintain
 performance and reduce the operational overhead.
